@@ -1,0 +1,41 @@
+# Environments & Virtual Envs
+.env
+.env.local
+venv/
+.venv/
+env/
+ENV/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Agentic Workspaces / Temp Sandboxes
+temp/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+db.sqlite3
+
+# IDE files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+#teach
+MISSION.md
+NOTES.md
+RESOURCES.md
+/lessons
+AboutMe.md
+/learning-records
+
+#PRD
+PRD.md
