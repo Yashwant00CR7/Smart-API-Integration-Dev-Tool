@@ -2,6 +2,7 @@ import sys
 import argparse
 import uvicorn
 from src.config import settings
+from src.app import app
 
 def main():
     parser = argparse.ArgumentParser(description="Smart API DevTool - FastAPI Server or MCP Server Mode")
@@ -24,7 +25,8 @@ def main():
     else:
         # Launch FastAPI server
         print(f"Starting FastAPI Web Server on http://{settings.host}:{settings.port}", file=sys.stderr)
-        uvicorn.run("src.app:app", host=settings.host, port=settings.port, reload=True)
+        uvicorn.run("src.app:app", host=settings.host, port=settings.port, reload=settings.reload)
 
 if __name__ == "__main__":
     main()
+

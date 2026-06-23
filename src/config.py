@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # Server configuration
     host: str = "0.0.0.0"
     port: int = 7860
+    reload: bool = False
     
     # Environment config
     model_config = SettingsConfigDict(
@@ -20,3 +21,4 @@ class Settings(BaseSettings):
     )
 
 settings = Settings()
+

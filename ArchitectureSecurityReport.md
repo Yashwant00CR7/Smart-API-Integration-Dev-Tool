@@ -16,6 +16,10 @@ This report provides a formal evaluation of the Model Context Protocol (MCP) ser
 - **Stateless Client Cache Pattern**: Leverages browser `localStorage` to save user use cases, preferred target languages, and API key tokens. This ensures a stateless backend and reduces security liabilities on the server.
 - **Browser-Side ZIP Packaging**: Integrates the lightweight `JSZip` library via a secure CDN. The wrapper code, test suites, and setup README documents are compiled and zipped directly on the client side, bypassing server-side CPU zip-compression overhead and removing storage requirements on the backend.
 
+### Containerized Multi-Runtime Architecture (Phase 5)
+- **Unified Development Base**: Standardized the execution environment by bundling Python 3.11, NodeJS 18, Golang, and Java JDK in a single Debian-based Docker image. This guarantees that the sandbox executor (`src/services/executor.py`) can invoke language compilers natively without host system dependency drift.
+- **Baking Compilers for Offline Performance**: Pre-installed `typescript` and `ts-node` globally via `npm` inside the image. This avoids high-latency npm registry pulls and potential network timeouts during test executions in container sandboxes.
+
 ---
 
 ## 2. Security Assessment & Hardening
@@ -36,6 +40,10 @@ This report provides a formal evaluation of the Model Context Protocol (MCP) ser
 - **Local Storage Quota Isolation**: Wrapped history serialization in try-catch blocks to catch `QuotaExceededError` or DOM quota exceptions, preventing unhandled JavaScript runtime exceptions when local history exceeds the 5MB browser quota.
 - **JSON Error Parser Safety**: Implemented fallback text decoding on HTTP non-200 responses. This ensures that HTML error payloads (like 502 Bad Gateway or 504 Gateway Timeout) returned by reverse proxies do not trigger JSON parse failures (`SyntaxError: Unexpected token <`) and shadow actual server errors.
 - **Offline Fault Tolerance**: Implemented check logic to verify the presence of the `JSZip` class before compression, preventing client-side crashes when developers run Ollie/Ollama generations offline.
+
+### Non-Root Space Compliance & Write Sandboxing (Phase 5 Audited)
+- **UID 1000 Enforcement**: Cloud providers like Hugging Face Spaces restrict container execution to UID 1000. Running as root or writing to root-owned workspaces causes instant Permission Errors. The Dockerfile creates a non-root system user `user` (UID 1000), shifts context via `USER user`, and marks all copied project assets with `chown=user`, enabling secure file-writing in the `/home/user/app/temp` test directories.
+- **Uvicorn Production Hardening**: Configured `reload: bool = False` by default for the FastAPI server inside production containers, preventing CPU-heavy directory polling and disabling hot-reload backdoors.
 
 ---
 
@@ -62,3 +70,5 @@ graph TD
 - **Real-World System Programming:** Students learn to manipulate low-level I/O streams and manage child subprocesses on Windows/Unix environments.
 - **Protocol Standards:** Practical exposure to JSON-RPC 2.0 and the Model Context Protocol, teaching students how to write decoupled, specification-compliant service handlers.
 - **Defensive Design:** Highlights the importance of preventing stream contamination, protecting keys, sandboxing executions, and robust client-side storage boundaries.
+- **Cloud Deployment & Virtualization:** Practical experience setting up containerized multi-runtime environments, writing compliant Dockerfiles for non-root boundaries, and understanding port/user mapping specs for cloud execution.
+
