@@ -8,6 +8,8 @@ from typing import Optional, List, Dict, Any
 from src.config import settings
 from src.services.scraper import scrape_url
 from src.services.executor import run_tests
+from src.agent import run_agent_workflow
+
 
 app = FastAPI(
     title="Smart API DevTool",
@@ -48,25 +50,37 @@ def health_check():
 @app.post("/api/analyze")
 async def analyze_api(request: AnalyzeRequest):
     """
-    Skeleton endpoint for API analysis.
-    This will be fully wired up with the LangGraph self-healing agent in Phase 2.
-    For Phase 1, it allows basic validation of Scraper and Executor components.
+    Analyzes API documentation (via URL scraping or raw text) and triggers
+    the LangGraph self-healing agent loop to output verified wrapper classes.
     """
     try:
         scraped_text = ""
         if request.url:
-            # Scrape document using scraper service
             scraped_text = scrape_url(request.url, api_key=request.firecrawl_key)
         elif request.raw_docs:
             scraped_text = request.raw_docs
         else:
-            raise HTTPException(status_code=420, detail="Must provide either a URL or raw_docs.")
+            raise HTTPException(status_code=400, detail="Must provide either a URL or raw_docs.")
             
+        result = run_agent_workflow(
+            scraped_text=scraped_text,
+            use_case=request.use_case,
+            language=request.language,
+            model_provider=request.model_provider,
+            gemini_key=request.gemini_key,
+            firecrawl_key=request.firecrawl_key
+        )
+        
         return {
-            "success": True,
-            "message": "Phase 1 backend services are operational.",
-            "scraped_length": len(scraped_text),
-            "scraped_preview": scraped_text[:500] if scraped_text else ""
+            "success": result.get("test_passed", False),
+            "overview": result.get("overview", ""),
+            "endpoints": result.get("endpoints", ""),
+            "code": result.get("code", ""),
+            "tests": result.get("tests", ""),
+            "readme": result.get("readme", ""),
+            "retry_count": result.get("retry_count", 0),
+            "error_logs": result.get("error_logs", ""),
+            "test_passed": result.get("test_passed", False)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

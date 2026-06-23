@@ -34,6 +34,7 @@ def run_tests(language: str, code: str, tests: str) -> Tuple[bool, str]:
     os.makedirs(sandbox_dir, exist_ok=True)
     
     language = language.lower().strip()
+    timeout_val = 30 if language in ["go", "golang", "java"] else 15
     
     code_filename = ""
     test_filename = ""
@@ -78,7 +79,7 @@ def run_tests(language: str, code: str, tests: str) -> Tuple[bool, str]:
             with open(tsconfig_path, "w", encoding="utf-8") as f:
                 f.write(tsconfig_content)
                 
-            run_args = ["npx", "ts-node", test_filename]
+            run_args = ["npx", "ts-node", "--transpile-only", test_filename]
             
         elif language in ["go", "golang"]:
             code_filename = "client.go"
@@ -130,7 +131,7 @@ def run_tests(language: str, code: str, tests: str) -> Tuple[bool, str]:
                 cwd=sandbox_dir,
                 capture_output=True,
                 text=True,
-                timeout=15
+                timeout=timeout_val
             )
             
             if compile_process.returncode != 0:
@@ -143,7 +144,7 @@ def run_tests(language: str, code: str, tests: str) -> Tuple[bool, str]:
                 cwd=sandbox_dir,
                 capture_output=True,
                 text=True,
-                timeout=15,
+                timeout=timeout_val,
                 env=env
             )
             
@@ -152,13 +153,18 @@ def run_tests(language: str, code: str, tests: str) -> Tuple[bool, str]:
             return success, logs
             
         else:
+            # On Windows, prepend cmd.exe /c for CMD-based tools like npx
+            actual_args = run_args
+            if os.name == "nt" and run_args and run_args[0] == "npx":
+                actual_args = ["cmd.exe", "/c"] + run_args
+
             # Run the command with strict timeout to prevent CPU hung states
             process = subprocess.run(
-                run_args,
+                actual_args,
                 cwd=sandbox_dir,
                 capture_output=True,
                 text=True,
-                timeout=15,
+                timeout=timeout_val,
                 env=env
             )
             
