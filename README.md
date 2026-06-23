@@ -1,13 +1,3 @@
----
-title: Smart API DevTool
-emoji: 🚀
-colorFrom: indigo
-colorTo: blue
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # Smart API Integration DevTool
 
 A local developer utility that automates third-party API integration. By taking an API documentation URL (or raw pasted text) and a description of your target use case, it scrapes endpoints, recommends integration paths, generates type-safe wrapper classes, and automatically compiles and self-heals any code bugs using localized sandboxes.
