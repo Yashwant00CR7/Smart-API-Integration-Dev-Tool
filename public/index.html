@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart API DevTool - Premium Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- JSZip for Client-side ZIP compilation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 17L12 22L22 17" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 12L12 17L22 12" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <defs>
+                            <linearGradient id="logo-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#6366f1"/>
+                                <stop offset="1" stop-color="#22d3ee"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <span class="logo-text">Smart API <span class="accent-text">DevTool</span></span>
+                </div>
+                <p class="tagline">Phase 4 Premium UI</p>
+            </div>
+            
+            <button id="btn-new" class="btn btn-new-integration">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                New Integration
+            </button>
+            
+            <div class="history-section">
+                <h3>Integrations History</h3>
+                <ul id="history-list" class="history-list">
+                    <li class="empty-history">No integrations yet</li>
+                </ul>
+            </div>
+            
+            <div class="sidebar-footer">
+                <button id="btn-clear-history" class="btn btn-secondary btn-sm">Clear History</button>
+                <div class="credit">Smart API Integration DevTool</div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header/Status Bar -->
+            <header class="main-header">
+                <h1>AI API Client Generator</h1>
+                <div class="status-bar">
+                    <div class="status-item" id="status-backend">
+                        <span class="status-indicator yellow"></span>
+                        Backend: <span class="status-label">Checking...</span>
+                    </div>
+                    <div class="status-item" id="status-gemini">
+                        <span class="status-indicator gray"></span>
+                        Gemini API: <span class="status-label">Not Configured</span>
+                    </div>
+                    <div class="status-item" id="status-ollama">
+                        <span class="status-indicator gray"></span>
+                        Ollama: <span class="status-label">Checking...</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content Grid -->
+            <div class="dashboard-grid">
+                <!-- Left: Form Controls -->
+                <section class="control-panel glass-card">
+                    <div class="section-title">
+                        <h2>Configure Generation</h2>
+                        <p>Define API sources, parameters, and credentials</p>
+                    </div>
+                    
+                    <form id="gen-form" onsubmit="return false;">
+                        <!-- API Source Selection -->
+                        <div class="form-group">
+                            <label>API Documentation Source</label>
+                            <div class="source-tabs">
+                                <button type="button" class="tab-btn active" id="tab-src-url">Scrape URL</button>
+                                <button type="button" class="tab-btn" id="tab-src-text">Paste Text Docs</button>
+                            </div>
+                            
+                            <div id="src-url-container" class="source-input-container">
+                                <input type="url" id="api-url" class="form-control" placeholder="https://api.example.com/docs/v1">
+                                <small class="form-text">Scraped dynamically using Firecrawl (Keyless Cloud or custom API key).</small>
+                            </div>
+                            
+                            <div id="src-text-container" class="source-input-container hidden">
+                                <textarea id="raw-docs" class="form-control" rows="8" placeholder="Paste endpoints definition, headers, or full API documentation markdown here..."></textarea>
+                                <small class="form-text">Direct markdown text fallback for local endpoints or custom offline APIs.</small>
+                            </div>
+                        </div>
+
+                        <!-- Target Use Case -->
+                        <div class="form-group">
+                            <label for="use-case">Target Use Case / Target Functions</label>
+                            <textarea id="use-case" class="form-control" rows="4" required placeholder="Example: Authenticate using Bearer tokens, retrieve a list of active users, and update user profile info using a JSON payload."></textarea>
+                            <small class="form-text">Detail specific operations or endpoints you want implemented in the client wrapper.</small>
+                        </div>
+
+                        <!-- Language & Model Preferences -->
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="language">Target Language</label>
+                                <select id="language" class="form-control">
+                                    <option value="python">Python (pytest)</option>
+                                    <option value="javascript">JavaScript (Node)</option>
+                                    <option value="typescript">TypeScript (ts-node)</option>
+                                    <option value="go">Go (testing)</option>
+                                    <option value="java">Java (Main assertions)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="model-provider">Model Provider</label>
+                                <select id="model-provider" class="form-control">
+                                    <option value="gemini">Google Gemini (Cloud)</option>
+                                    <option value="ollama">Ollama (Local qwen2.5-coder)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- API Keys & Sandbox Options -->
+                        <div class="accordion-header" id="accordion-trigger">
+                            <span>API Keys & Credentials</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chevron"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                        
+                        <div class="accordion-content hidden" id="accordion-body">
+                            <div class="form-group">
+                                <label for="gemini-key">Google Gemini API Key</label>
+                                <input type="password" id="gemini-key" class="form-control" placeholder="AIzaSy..." autocomplete="off">
+                                <small class="form-text">Provided key will override backend default credentials.</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="firecrawl-key">Firecrawl API Key</label>
+                                <input type="password" id="firecrawl-key" class="form-control" placeholder="fc-..." autocomplete="off">
+                                <small class="form-text">Provided key will override backend default credentials.</small>
+                            </div>
+                            
+                            <div class="checkbox-group">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="remember-keys" checked>
+                                    <span class="checkmark"></span>
+                                    Remember keys in this browser
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Action Button -->
+                        <button type="submit" id="btn-generate" class="btn btn-primary btn-block">
+                            <span class="btn-text">Generate Verified Wrapper</span>
+                            <div class="loader hidden"></div>
+                        </button>
+                    </form>
+                </section>
+
+                <!-- Right: Simulated Console & Output Viewer -->
+                <section class="output-panel">
+                    <!-- Agent Console Logging -->
+                    <div class="console-card glass-card">
+                        <div class="console-header">
+                            <div class="window-buttons">
+                                <span class="dot red"></span>
+                                <span class="dot yellow"></span>
+                                <span class="dot green"></span>
+                            </div>
+                            <span class="console-title">Agentic Sandbox Session</span>
+                            <span class="console-status" id="console-pulse">Idle</span>
+                        </div>
+                        <div class="console-body" id="console-logs">
+                            <div class="console-line system">[System] Ready. Enter parameters and click 'Generate' to initiate the self-healing workflow.</div>
+                        </div>
+                    </div>
+
+                    <!-- Generation Output Panel (Initially hidden, revealed on success) -->
+                    <div id="results-card" class="results-card glass-card hidden">
+                        <div class="results-header">
+                            <div class="results-title-section">
+                                <span class="badge" id="badge-language">Python</span>
+                                <h3 id="results-headline">Client Wrapper Package</h3>
+                            </div>
+                            <div class="export-actions">
+                                <button id="btn-download-zip" class="btn btn-success">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    Download ZIP Package
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Results Tabs -->
+                        <div class="results-tabs">
+                            <button class="res-tab-btn active" data-tab="res-overview">Overview</button>
+                            <button class="res-tab-btn" data-tab="res-endpoints">Endpoints</button>
+                            <button class="res-tab-btn" data-tab="res-code">Client Code</button>
+                            <button class="res-tab-btn" data-tab="res-tests">Unit Tests</button>
+                            <button class="res-tab-btn" data-tab="res-readme">Usage Guide</button>
+                        </div>
+
+                        <!-- Results Panels -->
+                        <div class="results-panels-container">
+                            <!-- Overview -->
+                            <div class="res-panel active" id="res-overview">
+                                <div class="markdown-body" id="overview-content"></div>
+                            </div>
+                            
+                            <!-- Endpoints -->
+                            <div class="res-panel" id="res-endpoints">
+                                <div class="markdown-body" id="endpoints-content"></div>
+                            </div>
+                            
+                            <!-- Client Code -->
+                            <div class="res-panel" id="res-code">
+                                <div class="panel-actions">
+                                    <button class="btn btn-secondary btn-sm btn-copy" data-target="code-content">Copy</button>
+                                    <button class="btn btn-secondary btn-sm btn-download-file" data-file="code">Download</button>
+                                </div>
+                                <pre><code id="code-content" class="language-code"></code></pre>
+                            </div>
+                            
+                            <!-- Unit Tests -->
+                            <div class="res-panel" id="res-tests">
+                                <div class="panel-actions">
+                                    <button class="btn btn-secondary btn-sm btn-copy" data-target="tests-content">Copy</button>
+                                    <button class="btn btn-secondary btn-sm btn-download-file" data-file="tests">Download</button>
+                                </div>
+                                <pre><code id="tests-content" class="language-code"></code></pre>
+                            </div>
+                            
+                            <!-- Usage Guide -->
+                            <div class="res-panel" id="res-readme">
+                                <div class="panel-actions">
+                                    <button class="btn btn-secondary btn-sm btn-copy" data-target="readme-content">Copy</button>
+                                    <button class="btn btn-secondary btn-sm btn-download-file" data-file="readme">Download</button>
+                                </div>
+                                <pre><code id="readme-content" class="language-code"></code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
