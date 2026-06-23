@@ -17,7 +17,7 @@ def scrape_url(url: str, api_key: Optional[str] = None) -> str:
     if parsed.scheme not in ["http", "https"]:
         raise ValueError("Invalid URL protocol. Only HTTP and HTTPS schemes are supported.")
         
-    endpoint = "https://api.firecrawl.dev/v1/scrape"
+    endpoint = "https://api.firecrawl.dev/v2/scrape"
     
     headers = {
         "Content-Type": "application/json"

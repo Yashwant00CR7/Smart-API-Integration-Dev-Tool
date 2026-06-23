@@ -47,3 +47,6 @@ ArchitectureSecurityReport.md
 test/
 deploy.ps1
 README.hf.md
+
+#venv
+dev/
