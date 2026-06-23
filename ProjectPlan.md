@@ -153,3 +153,47 @@ Use these clickable file links to inspect details, check tasks, and verify progr
 
 ### **Phase 6: Walkthrough & Git Delivery**
 * Format the codebase, compile the walkthrough report, and commit changes using Conventional Commit patterns.
+
+---
+
+## 5. Future System Design Proposals
+
+### Architectural Question: Concurrency & Sandbox Isolation on Free Cloud Runtimes
+> *"If there are 10 to 100 users using a local host, when they are using local host and if they do not have the package installed, we do not want to disturb their local system. If we use the Docker availability in Hugging Face and make it a common platform to run all the tasks for those 100 users, there is a resources bottleneck on the free tier (2 vCPUs, 16 GB RAM). How can we resolve this on a free-tier basis to improve project system design?"*
+
+### Proposed Solution: Piston-Based Serverless Code Execution (Strategy 3)
+To eliminate compiler installation overhead inside the host Docker image and prevent CPU/RAM resource starvation under concurrent user spikes, we propose offloading sandbox executions to a serverless code execution engine:
+
+#### 1. How it Works
+- Instead of executing tests locally via Python subprocesses (`pytest`, `node`, `go test`, `javac`), the sandbox executor (`src/services/executor.py`) delegates execution to a **Piston API** endpoint.
+- The executor constructs an HTTP POST request containing the generated wrapper source code, the test file code, and the language identifier, sending it to a public or private Piston API instance:
+  ```http
+  POST /api/v2/execute HTTP/1.1
+  Host:emkc.org
+  Content-Type: application/json
+
+  {
+    "language": "python",
+    "version": "3.10.0",
+    "files": [
+      {
+        "name": "client.py",
+        "content": "class MyAPIClient: ..."
+      },
+      {
+        "name": "test_client.py",
+        "content": "def test_get_user(): ..."
+      }
+    ]
+  }
+  ```
+- The Piston container runs the tests in isolation and returns structured JSON containing the stdout, stderr, and process exit code.
+
+#### 2. Architectural Impact
+* **Pros:**
+  - **Ultra-Lightweight Containers:** Deletes heavy compilers (golang, default-jdk, nodejs) from the custom Dockerfile, shrinking the image size from ~2GB to <200MB.
+  - **Zero CPU/RAM Contention:** Shifting the compilation work off the Hugging Face Space protects it from OOM (Out of Memory) crashes when 100 concurrent users trigger code executions.
+  - **No Local Installs:** Users do not need any local compiler packages on their system, maintaining complete environment isolation.
+* **Cons:**
+  - Introduces a network dependency on third-party public execution endpoints, which may be subject to external rate limits or availability.
+
