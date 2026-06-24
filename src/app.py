@@ -32,10 +32,7 @@ class AnalyzeRequest(BaseModel):
     use_case: str = Field(..., description="Details on what the wrapper will do.")
     language: str = Field("python", description="Target programming language.")
     model_provider: str = Field("gemini", description="Either 'gemini', 'ollama' or 'groq'.")
-    gemini_key: Optional[str] = Field(None, description="Optional Google Gemini API Key.")
-    groq_key: Optional[str] = Field(None, description="Optional Groq API Key.")
     groq_model: Optional[str] = Field(None, description="Optional Groq Model ID.")
-    firecrawl_key: Optional[str] = Field(None, description="Optional Firecrawl API Key.")
 
 @app.get("/api/health")
 def health_check():
@@ -64,7 +61,7 @@ async def analyze_api(request: AnalyzeRequest):
     try:
         scraped_text = ""
         if request.url:
-            scraped_text = scrape_url(request.url, api_key=request.firecrawl_key)
+            scraped_text = scrape_url(request.url)
         elif request.raw_docs:
             scraped_text = request.raw_docs
         else:
@@ -75,10 +72,7 @@ async def analyze_api(request: AnalyzeRequest):
             use_case=request.use_case,
             language=request.language,
             model_provider=request.model_provider,
-            gemini_key=request.gemini_key,
-            groq_key=request.groq_key,
-            groq_model=request.groq_model,
-            firecrawl_key=request.firecrawl_key
+            groq_model=request.groq_model
         )
         
         return {

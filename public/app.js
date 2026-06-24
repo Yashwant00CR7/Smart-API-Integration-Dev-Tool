@@ -12,10 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const srcUrlContainer = document.getElementById('src-url-container');
     const srcTextContainer = document.getElementById('src-text-container');
     
-    // Accordion Keys
-    const accordionTrigger = document.getElementById('accordion-trigger');
-    const accordionBody = document.getElementById('accordion-body');
-    
     // Status Elements
     const statusBackend = document.getElementById('status-backend');
     const statusGemini = document.getElementById('status-gemini');
@@ -30,10 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const modelProviderSelect = document.getElementById('model-provider');
     const groqModelSelect = document.getElementById('groq-model');
     const groqModelContainer = document.getElementById('groq-model-container');
-    const geminiKeyInput = document.getElementById('gemini-key');
-    const groqKeyInput = document.getElementById('groq-key');
-    const firecrawlKeyInput = document.getElementById('firecrawl-key');
-    const rememberKeysCheckbox = document.getElementById('remember-keys');
     
     // Console Output
     const consoleLogs = document.getElementById('console-logs');
@@ -65,48 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
     init();
 
     function init() {
-        loadCredentials();
         loadHistory();
         checkBackendStatus();
         setupEventListeners();
-    }
-
-    // Load saved API keys from localStorage
-    function loadCredentials() {
-        if (localStorage.getItem('remember_keys') === 'true') {
-            rememberKeysCheckbox.checked = true;
-            if (localStorage.getItem('gemini_key')) {
-                geminiKeyInput.value = localStorage.getItem('gemini_key');
-            }
-            if (localStorage.getItem('groq_key')) {
-                groqKeyInput.value = localStorage.getItem('groq_key');
-            }
-            if (localStorage.getItem('groq_model')) {
-                groqModelSelect.value = localStorage.getItem('groq_model');
-            }
-            if (localStorage.getItem('firecrawl_key')) {
-                firecrawlKeyInput.value = localStorage.getItem('firecrawl_key');
-            }
-        } else {
-            rememberKeysCheckbox.checked = false;
-        }
-    }
-
-    // Save API keys to localStorage
-    function saveCredentials() {
-        if (rememberKeysCheckbox.checked) {
-            localStorage.setItem('remember_keys', 'true');
-            localStorage.setItem('gemini_key', geminiKeyInput.value.trim());
-            localStorage.setItem('groq_key', groqKeyInput.value.trim());
-            localStorage.setItem('groq_model', groqModelSelect.value);
-            localStorage.setItem('firecrawl_key', firecrawlKeyInput.value.trim());
-        } else {
-            localStorage.removeItem('remember_keys');
-            localStorage.removeItem('gemini_key');
-            localStorage.removeItem('groq_key');
-            localStorage.removeItem('groq_model');
-            localStorage.removeItem('firecrawl_key');
-        }
     }
 
     // Load history list from localStorage
@@ -335,15 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
             rawDocsInput.required = true;
         });
 
-        // Accordion for credentials
-        accordionTrigger.addEventListener('click', () => {
-            const isOpen = accordionTrigger.classList.toggle('open');
-            if (isOpen) {
-                accordionBody.classList.remove('hidden');
-            } else {
-                accordionBody.classList.add('hidden');
-            }
-        });
+
 
         // Clear history click
         btnClearHistory.addEventListener('click', () => {
@@ -473,12 +418,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusBackend.querySelector('.status-label').textContent = 'Online';
                 
                 // Update Gemini status
-                const hasGemini = data.configuration.has_gemini_key || !!geminiKeyInput.value.trim();
+                const hasGemini = data.configuration.has_gemini_key;
                 statusGemini.querySelector('.status-indicator').className = hasGemini ? 'status-indicator green' : 'status-indicator red';
                 statusGemini.querySelector('.status-label').textContent = hasGemini ? 'Available' : 'Config Required';
                 
                 // Update Groq status
-                const hasGroq = data.configuration.has_groq_key || !!groqKeyInput.value.trim();
+                const hasGroq = data.configuration.has_groq_key;
                 statusGroq.querySelector('.status-indicator').className = hasGroq ? 'status-indicator green' : 'status-indicator red';
                 statusGroq.querySelector('.status-label').textContent = hasGroq ? 'Available' : 'Config Required';
                 
@@ -518,10 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const useCase = useCaseInput.value.trim();
         const language = languageSelect.value;
         const modelProvider = modelProviderSelect.value;
-        const geminiKey = geminiKeyInput.value.trim();
-        const groqKey = groqKeyInput.value.trim();
         const groqModel = groqModelSelect.value;
-        const firecrawlKey = firecrawlKeyInput.value.trim();
 
         // 1. Validation
         if (selectedSource === 'url' && !url) {
@@ -537,8 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Save credentials if remember keys is toggled
-        saveCredentials();
+
 
         // 2. Set UI Loading State
         btnGenerate.disabled = true;
@@ -574,10 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
             model_provider: modelProvider,
             url: selectedSource === 'url' ? url : null,
             raw_docs: selectedSource === 'text' ? rawDocs : null,
-            gemini_key: geminiKey || null,
-            groq_key: groqKey || null,
-            groq_model: groqModel || null,
-            firecrawl_key: firecrawlKey || null
+            groq_model: groqModel || null
         };
 
         let requestFailed = false;
