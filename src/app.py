@@ -32,7 +32,11 @@ class AnalyzeRequest(BaseModel):
     use_case: str = Field(..., description="Details on what the wrapper will do.")
     language: str = Field("python", description="Target programming language.")
     model_provider: str = Field("gemini", description="Either 'gemini', 'ollama' or 'groq'.")
+    gemini_key: Optional[str] = Field(None, description="Optional Google Gemini API Key.")
+    gemini_model: Optional[str] = Field("gemini-2.5-flash", description="Optional Google Gemini Model ID.")
+    groq_key: Optional[str] = Field(None, description="Optional Groq API Key.")
     groq_model: Optional[str] = Field(None, description="Optional Groq Model ID.")
+    firecrawl_key: Optional[str] = Field(None, description="Optional Firecrawl API Key.")
 
 @app.get("/api/health")
 def health_check():
@@ -72,7 +76,11 @@ async def analyze_api(request: AnalyzeRequest):
             use_case=request.use_case,
             language=request.language,
             model_provider=request.model_provider,
-            groq_model=request.groq_model
+            gemini_key=request.gemini_key,
+            gemini_model=request.gemini_model,
+            groq_key=request.groq_key,
+            groq_model=request.groq_model,
+            firecrawl_key=request.firecrawl_key
         )
         
         return {

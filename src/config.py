@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     port: int = 7860
     reload: bool = False
     access_log: bool = False
+    gemini_model: str = "gemini-2.5-flash"
     
     # Environment config
     model_config = SettingsConfigDict(

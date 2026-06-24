@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const useCaseInput = document.getElementById('use-case');
     const languageSelect = document.getElementById('language');
     const modelProviderSelect = document.getElementById('model-provider');
+    const geminiModelSelect = document.getElementById('gemini-model');
+    const geminiModelContainer = document.getElementById('gemini-model-container');
     const groqModelSelect = document.getElementById('groq-model');
     const groqModelContainer = document.getElementById('groq-model-container');
     
@@ -195,6 +197,15 @@ document.addEventListener('DOMContentLoaded', () => {
         useCaseInput.value = record.useCase;
         languageSelect.value = record.language;
         modelProviderSelect.value = record.modelProvider;
+        if (record.modelProvider === 'gemini') {
+            geminiModelContainer.classList.remove('hidden');
+            if (record.geminiModel) {
+                geminiModelSelect.value = record.geminiModel;
+            }
+        } else {
+            geminiModelContainer.classList.add('hidden');
+        }
+
         if (record.modelProvider === 'groq') {
             groqModelContainer.classList.remove('hidden');
             if (record.groqModel) {
@@ -310,6 +321,8 @@ document.addEventListener('DOMContentLoaded', () => {
             useCaseInput.value = '';
             languageSelect.selectedIndex = 0;
             modelProviderSelect.selectedIndex = 0;
+            if (geminiModelSelect) geminiModelSelect.selectedIndex = 0;
+            if (geminiModelContainer) geminiModelContainer.classList.remove('hidden');
             if (groqModelSelect) groqModelSelect.selectedIndex = 0;
             if (groqModelContainer) groqModelContainer.classList.add('hidden');
             
@@ -323,9 +336,19 @@ document.addEventListener('DOMContentLoaded', () => {
             consolePulse.className = 'console-status';
         });
 
-        // Toggle Groq Model selection on provider change
+        // Toggle Model selection on provider change
         modelProviderSelect.addEventListener('change', () => {
-            if (modelProviderSelect.value === 'groq') {
+            const provider = modelProviderSelect.value;
+            
+            // Toggle Gemini
+            if (provider === 'gemini') {
+                geminiModelContainer.classList.remove('hidden');
+            } else {
+                geminiModelContainer.classList.add('hidden');
+            }
+            
+            // Toggle Groq
+            if (provider === 'groq') {
                 groqModelContainer.classList.remove('hidden');
             } else {
                 groqModelContainer.classList.add('hidden');
@@ -463,6 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const useCase = useCaseInput.value.trim();
         const language = languageSelect.value;
         const modelProvider = modelProviderSelect.value;
+        const geminiModel = geminiModelSelect.value;
         const groqModel = groqModelSelect.value;
 
         // 1. Validation
@@ -515,6 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
             model_provider: modelProvider,
             url: selectedSource === 'url' ? url : null,
             raw_docs: selectedSource === 'text' ? rawDocs : null,
+            gemini_model: geminiModel || null,
             groq_model: groqModel || null
         };
 
@@ -595,6 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 useCase: useCase,
                 language: language,
                 modelProvider: modelProvider,
+                geminiModel: geminiModel,
                 groqModel: groqModel,
                 result: responseData
             });
@@ -615,6 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 useCase: useCase,
                 language: language,
                 modelProvider: modelProvider,
+                geminiModel: geminiModel,
                 groqModel: groqModel,
                 result: responseData
             });

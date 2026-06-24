@@ -190,6 +190,10 @@ def run_mcp_server():
                                     "type": "string",
                                     "description": "Optional Google Gemini API Key. Required if model_provider is 'gemini' and the server has no key configured."
                                 },
+                                "gemini_model": {
+                                    "type": "string",
+                                    "description": "Optional Google Gemini Model ID (e.g. 'gemini-2.5-flash')."
+                                },
                                 "groq_key": {
                                     "type": "string",
                                     "description": "Optional Groq API Key. Required if model_provider is 'groq' and the server has no key configured."
@@ -279,6 +283,7 @@ def run_mcp_server():
                     language = arguments.get("language", "python")
                     model_provider = arguments.get("model_provider", "gemini")
                     gemini_key = arguments.get("gemini_key")
+                    gemini_model = arguments.get("gemini_model")
                     groq_key = arguments.get("groq_key")
                     groq_model = arguments.get("groq_model")
                     firecrawl_key = arguments.get("firecrawl_key")
@@ -301,6 +306,7 @@ def run_mcp_server():
                             language=str(language),
                             model_provider=str(model_provider),
                             gemini_key=gemini_key,
+                            gemini_model=gemini_model,
                             groq_key=groq_key,
                             groq_model=groq_model,
                             firecrawl_key=firecrawl_key
