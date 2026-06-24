@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusBackend = document.getElementById('status-backend');
     const statusGemini = document.getElementById('status-gemini');
     const statusOllama = document.getElementById('status-ollama');
+    const statusGroq = document.getElementById('status-groq');
     
     // Input Fields
     const apiUrlInput = document.getElementById('api-url');
@@ -27,7 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const useCaseInput = document.getElementById('use-case');
     const languageSelect = document.getElementById('language');
     const modelProviderSelect = document.getElementById('model-provider');
+    const groqModelSelect = document.getElementById('groq-model');
+    const groqModelContainer = document.getElementById('groq-model-container');
     const geminiKeyInput = document.getElementById('gemini-key');
+    const groqKeyInput = document.getElementById('groq-key');
     const firecrawlKeyInput = document.getElementById('firecrawl-key');
     const rememberKeysCheckbox = document.getElementById('remember-keys');
     
@@ -74,6 +78,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem('gemini_key')) {
                 geminiKeyInput.value = localStorage.getItem('gemini_key');
             }
+            if (localStorage.getItem('groq_key')) {
+                groqKeyInput.value = localStorage.getItem('groq_key');
+            }
+            if (localStorage.getItem('groq_model')) {
+                groqModelSelect.value = localStorage.getItem('groq_model');
+            }
             if (localStorage.getItem('firecrawl_key')) {
                 firecrawlKeyInput.value = localStorage.getItem('firecrawl_key');
             }
@@ -87,10 +97,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (rememberKeysCheckbox.checked) {
             localStorage.setItem('remember_keys', 'true');
             localStorage.setItem('gemini_key', geminiKeyInput.value.trim());
+            localStorage.setItem('groq_key', groqKeyInput.value.trim());
+            localStorage.setItem('groq_model', groqModelSelect.value);
             localStorage.setItem('firecrawl_key', firecrawlKeyInput.value.trim());
         } else {
             localStorage.removeItem('remember_keys');
             localStorage.removeItem('gemini_key');
+            localStorage.removeItem('groq_key');
+            localStorage.removeItem('groq_model');
             localStorage.removeItem('firecrawl_key');
         }
     }
@@ -161,6 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
             useCase: data.useCase,
             language: data.language,
             modelProvider: data.modelProvider,
+            groqModel: data.groqModel,
             overview: data.result.overview,
             endpoints: data.result.endpoints,
             code: data.result.code,
@@ -227,6 +242,14 @@ document.addEventListener('DOMContentLoaded', () => {
         useCaseInput.value = record.useCase;
         languageSelect.value = record.language;
         modelProviderSelect.value = record.modelProvider;
+        if (record.modelProvider === 'groq') {
+            groqModelContainer.classList.remove('hidden');
+            if (record.groqModel) {
+                groqModelSelect.value = record.groqModel;
+            }
+        } else {
+            groqModelContainer.classList.add('hidden');
+        }
 
         // Set output panel content
         badgeLanguage.textContent = record.language;
@@ -342,6 +365,8 @@ document.addEventListener('DOMContentLoaded', () => {
             useCaseInput.value = '';
             languageSelect.selectedIndex = 0;
             modelProviderSelect.selectedIndex = 0;
+            if (groqModelSelect) groqModelSelect.selectedIndex = 0;
+            if (groqModelContainer) groqModelContainer.classList.add('hidden');
             
             // Remove active highlight in sidebar
             const items = historyList.querySelectorAll('.history-item');
@@ -351,6 +376,15 @@ document.addEventListener('DOMContentLoaded', () => {
             consoleLogs.innerHTML = `<div class="console-line system">[System] Form reset. Ready for a new integration.</div>`;
             consolePulse.textContent = 'Idle';
             consolePulse.className = 'console-status';
+        });
+
+        // Toggle Groq Model selection on provider change
+        modelProviderSelect.addEventListener('change', () => {
+            if (modelProviderSelect.value === 'groq') {
+                groqModelContainer.classList.remove('hidden');
+            } else {
+                groqModelContainer.classList.add('hidden');
+            }
         });
 
         // Form Submit
@@ -443,6 +477,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusGemini.querySelector('.status-indicator').className = hasGemini ? 'status-indicator green' : 'status-indicator red';
                 statusGemini.querySelector('.status-label').textContent = hasGemini ? 'Available' : 'Config Required';
                 
+                // Update Groq status
+                const hasGroq = data.configuration.has_groq_key || !!groqKeyInput.value.trim();
+                statusGroq.querySelector('.status-indicator').className = hasGroq ? 'status-indicator green' : 'status-indicator red';
+                statusGroq.querySelector('.status-label').textContent = hasGroq ? 'Available' : 'Config Required';
+                
                 // Update Ollama status
                 statusOllama.querySelector('.status-indicator').className = 'status-indicator green';
                 statusOllama.querySelector('.status-label').textContent = 'Active';
@@ -455,6 +494,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             statusOllama.querySelector('.status-indicator').className = 'status-indicator red';
             statusOllama.querySelector('.status-label').textContent = 'Disconnected';
+            
+            statusGroq.querySelector('.status-indicator').className = 'status-indicator red';
+            statusGroq.querySelector('.status-label').textContent = 'Disconnected';
         }
     }
 
@@ -477,6 +519,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const language = languageSelect.value;
         const modelProvider = modelProviderSelect.value;
         const geminiKey = geminiKeyInput.value.trim();
+        const groqKey = groqKeyInput.value.trim();
+        const groqModel = groqModelSelect.value;
         const firecrawlKey = firecrawlKeyInput.value.trim();
 
         // 1. Validation
@@ -531,6 +575,8 @@ document.addEventListener('DOMContentLoaded', () => {
             url: selectedSource === 'url' ? url : null,
             raw_docs: selectedSource === 'text' ? rawDocs : null,
             gemini_key: geminiKey || null,
+            groq_key: groqKey || null,
+            groq_model: groqModel || null,
             firecrawl_key: firecrawlKey || null
         };
 
@@ -611,6 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 useCase: useCase,
                 language: language,
                 modelProvider: modelProvider,
+                groqModel: groqModel,
                 result: responseData
             });
             
@@ -630,6 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 useCase: useCase,
                 language: language,
                 modelProvider: modelProvider,
+                groqModel: groqModel,
                 result: responseData
             });
         }

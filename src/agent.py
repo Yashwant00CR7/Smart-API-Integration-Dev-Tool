@@ -20,6 +20,8 @@ class AgentState(TypedDict):
     language: str
     model_provider: str
     gemini_key: Optional[str]
+    groq_key: Optional[str]
+    groq_model: Optional[str]
     firecrawl_key: Optional[str]
     retry_count: int
     error_logs: str
@@ -114,6 +116,8 @@ def generate_code(state: AgentState) -> Dict[str, Any]:
     language = state.get("language", "python").lower().strip()
     model_provider = state.get("model_provider", "gemini")
     gemini_key = state.get("gemini_key") or settings.gemini_api_key
+    groq_key = state.get("groq_key") or settings.groq_api_key
+    groq_model = state.get("groq_model") or "llama-3.3-70b-versatile"
     retry_count = state.get("retry_count", 0)
     error_logs = state.get("error_logs", "")
     
@@ -252,6 +256,46 @@ INSTRUCTIONS:
             "tests": parsed.get("tests", ""),
             "readme": parsed.get("readme", ""),
         }
+    elif model_provider == "groq":
+        if not groq_key:
+            raise ValueError("Groq API Key is required but not provided. Please supply one in your configuration or UI.")
+            
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {groq_key}",
+            "Content-Type": "application/json"
+        }
+        
+        prompt_with_format = prompt + "\n\nCRITICAL: Return ONLY a valid JSON object matching this schema:\n" + json.dumps({
+            "overview": "string (Overview of auth methods, integration path recommendation)",
+            "endpoints": "string (List of endpoints, request payloads, headers, query parameters)",
+            "code": "string (The complete client wrapper code)",
+            "tests": "string (The complete unit test suite)",
+            "readme": "string (README markdown guide)"
+        }, indent=2)
+        
+        payload = {
+            "model": groq_model,
+            "messages": [
+                {"role": "user", "content": prompt_with_format}
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.1
+        }
+        
+        response = requests.post(url, json=payload, headers=headers, timeout=120)
+        response.raise_for_status()
+        result = response.json()
+        response_text = result["choices"][0]["message"]["content"]
+        
+        parsed = parse_ollama_json(response_text)
+        return {
+            "overview": parsed.get("overview", ""),
+            "endpoints": parsed.get("endpoints", ""),
+            "code": parsed.get("code", ""),
+            "tests": parsed.get("tests", ""),
+            "readme": parsed.get("readme", ""),
+        }
     else:
         raise ValueError(f"Unsupported model provider: {model_provider}")
 
@@ -312,6 +356,8 @@ def run_agent_workflow(
     language: str,
     model_provider: str,
     gemini_key: Optional[str] = None,
+    groq_key: Optional[str] = None,
+    groq_model: Optional[str] = None,
     firecrawl_key: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -323,6 +369,8 @@ def run_agent_workflow(
         "language": language,
         "model_provider": model_provider,
         "gemini_key": gemini_key,
+        "groq_key": groq_key,
+        "groq_model": groq_model,
         "firecrawl_key": firecrawl_key,
         "retry_count": 0,
         "error_logs": "",

@@ -5,6 +5,7 @@ from typing import Optional
 class Settings(BaseSettings):
     # API Keys & Third-party integrations
     gemini_api_key: Optional[str] = None
+    groq_api_key: Optional[str] = None
     firecrawl_api_key: Optional[str] = None
     ollama_base_url: str = "http://localhost:11434"
     

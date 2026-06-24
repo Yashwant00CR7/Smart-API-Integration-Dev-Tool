@@ -184,11 +184,19 @@ def run_mcp_server():
                                 },
                                 "model_provider": {
                                     "type": "string",
-                                    "description": "The model provider to use ('gemini' or 'ollama'). Default is 'gemini'."
+                                    "description": "The model provider to use ('gemini', 'ollama', or 'groq'). Default is 'gemini'."
                                 },
                                 "gemini_key": {
                                     "type": "string",
                                     "description": "Optional Google Gemini API Key. Required if model_provider is 'gemini' and the server has no key configured."
+                                },
+                                "groq_key": {
+                                    "type": "string",
+                                    "description": "Optional Groq API Key. Required if model_provider is 'groq' and the server has no key configured."
+                                },
+                                "groq_model": {
+                                    "type": "string",
+                                    "description": "Optional Groq Model ID (e.g., 'llama-3.3-70b-versatile')."
                                 },
                                 "firecrawl_key": {
                                     "type": "string",
@@ -271,6 +279,8 @@ def run_mcp_server():
                     language = arguments.get("language", "python")
                     model_provider = arguments.get("model_provider", "gemini")
                     gemini_key = arguments.get("gemini_key")
+                    groq_key = arguments.get("groq_key")
+                    groq_model = arguments.get("groq_model")
                     firecrawl_key = arguments.get("firecrawl_key")
                     
                     if not scraped_text or not isinstance(scraped_text, str) or not use_case or not isinstance(use_case, str):
@@ -291,6 +301,8 @@ def run_mcp_server():
                             language=str(language),
                             model_provider=str(model_provider),
                             gemini_key=gemini_key,
+                            groq_key=groq_key,
+                            groq_model=groq_model,
                             firecrawl_key=firecrawl_key
                         )
                         
