@@ -1,11 +1,11 @@
 # Code Generation & Output Format Specification
 
-This document details how the Smart API DevTool packages, displays, and delivers generated code assets to the user.
+This document details how the Smart API DevTool packages, displays, and delivers generated code assets and test files to the developer.
 
 ---
 
 ## 1. User Interface Display (Tabbed Preview)
-When the LangGraph self-healing agent completes generation, the Web UI renders a tabbed workspace containing four distinct views:
+When the LangGraph self-healing agent completes generation, the Web UI renders a tabbed workspace containing five distinct views:
 
 1. **Overview & Auth Tab**: Displays extracted auth methods and the integration path recommendation (REST vs. SDK).
 2. **Endpoints Explorer Tab**: Shows an interactive dictionary of endpoints (GET, POST, DELETE), headers, query params, and request payloads.
@@ -19,35 +19,80 @@ When the LangGraph self-healing agent completes generation, the Web UI renders a
 Developers can download files individually or as a unified bundle.
 
 ### Option A: The Integration Bundle (ZIP)
-Clicking the **"Download Integration Bundle (ZIP)"** button packages all generated files into a single ZIP file dynamically in the browser using `JSZip`. The extracted bundle uses the following structured layout:
+Clicking the **"Download Integration Bundle (ZIP)"** button packages all generated files into a single ZIP file dynamically in the browser using `JSZip`. The extracted bundle structure varies by language:
 
+#### Python
 ```text
 my-api-integration/
 ├── README.md          # Setup instructions, dependencies, and code import examples
 ├── client.py          # The generated, type-safe wrapper class
-└── test_client.py     # The Pytest test suite for validation
+└── test_client.py     # The Pytest test suite for validation (unittest.mock)
 ```
 
-### Option B: Individual Downloads
-Each preview tab features a dedicated download button to save that specific file (e.g. saving only `client.py`).
+#### JavaScript
+```text
+my-api-integration/
+├── README.md          # Setup instructions and CommonJS import examples
+├── client.js          # The client class (exported via module.exports = { MyClientClass };)
+└── test_client.test.js # Standalone Node test script using named require and global fetch patch
+```
+
+#### TypeScript
+```text
+my-api-integration/
+├── README.md          # Setup instructions and TS import examples
+├── client.ts          # The client class (exported via export class MyClientClass { ... })
+├── test_client.test.ts # Standalone TS test script using named imports
+└── tsconfig.json      # Minimal TypeScript config for sandbox/ts-node runtimes
+```
+
+#### Go
+```text
+my-api-integration/
+├── README.md          # Setup instructions and go package import examples
+├── client.go          # Go package source file defining the client struct
+├── client_test.go     # Native Go test suite using testing package and httptest.NewServer
+└── go.mod             # Temporary Go module name definition
+```
+
+#### Java
+```text
+my-api-integration/
+├── README.md          # Setup instructions and compilation steps
+├── MyAPIClient.java   # The Java client class (using java.net.http.HttpClient)
+└── TestClient.java    # Standalone Java class with main() method running assertions (-ea)
+```
 
 ---
 
-## 3. Reference Output Code Structure (Python Example)
+## 3. Reference Output Code Structures
 
-Below is the standard, production-ready structure of a generated Python client wrapper. It includes type hinting, exception handling, requests sessions, and exponential backoff retry algorithms for rate-limiting (429) or transient server errors (5xx):
+Below are the standard, production-ready structures of generated client wrappers and test suites.
+
+### Python Client (Requests + Tenacity Retry)
+The Python client utilizes `requests.Session` for connection pooling, type hints, custom error wrappers, and `tenacity.Retrying` dynamically at runtime to respect user configurations:
 
 ```python
-import time
 import requests
+from tenacity import Retrying, stop_after_attempt, wait_exponential, retry_if_exception_type
 from typing import Dict, Any, Optional
 
-class APIClientError(Exception):
-    """Base exception for client errors."""
+class APIError(Exception):
+    """Base exception for API errors."""
     pass
 
-class MyAPIClient:
+class APIRateLimitError(APIError):
+    """Exception for rate limits (429)."""
+    pass
+
+class APIServerError(APIError):
+    """Exception for server-side downtime (5xx)."""
+    pass
+
+class APIClient:
     def __init__(self, api_key: str, base_url: str = "https://api.example.com/v1", max_retries: int = 3):
+        if not api_key:
+            raise ValueError("API key cannot be empty.")
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.max_retries = max_retries
@@ -57,41 +102,93 @@ class MyAPIClient:
             "Content-Type": "application/json"
         })
 
-    def _request(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
-        """Executes HTTP request with exponential backoff on rate limits/server errors."""
+    def _retry_request(self, func):
+        """Dynamic tenacity runner to enforce instance-level retry limits."""
+        retrier = Retrying(
+            stop=stop_after_attempt(self.max_retries + 1),
+            wait=wait_exponential(multiplier=0.5, min=1, max=30),
+            retry=(
+                retry_if_exception_type(APIRateLimitError) |
+                retry_if_exception_type(APIServerError)
+            ),
+            reraise=True
+        )
+        return retrier(func)
+
+    def _make_request(self, method: str, path: str, json_data=None) -> Dict[str, Any]:
         url = f"{self.base_url}/{path.lstrip('/')}"
-        retries = 0
-        backoff = 1.0
+        response = self.session.request(method, url, json=json_data, timeout=10)
+        
+        if response.status_code == 429:
+            raise APIRateLimitError(f"Rate limited: {response.text}")
+        elif response.status_code >= 500:
+            raise APIServerError(f"Server error: {response.status_code}")
+        
+        response.raise_for_status()
+        return response.json()
 
-        while retries < self.max_retries:
-            try:
-                response = self.session.request(method, url, timeout=10, **kwargs)
-                
-                # Handle Rate Limiting (429) or Temporary Server Downtime (5xx)
-                if response.status_code in [429, 500, 502, 503, 504]:
-                    retries += 1
-                    time.sleep(backoff)
-                    backoff *= 2  # Exponential backoff
-                    continue
-                
-                response.raise_for_status()
-                return response.json()
-            except requests.exceptions.RequestException as e:
-                if retries == self.max_retries - 1:
-                    raise APIClientError(f"API request failed: {e}")
-                retries += 1
-                time.sleep(backoff)
-                backoff *= 2
+    def get_resource(self, resource_id: str) -> Dict[str, Any]:
+        return self._retry_request(lambda: self._make_request("GET", f"/resources/{resource_id}"))
+```
 
-        raise APIClientError("Max retries exceeded")
+### JavaScript Client & Test (CommonJS + Async IIFE Test Harness)
+The JavaScript client uses named exports, the global `fetch` API, and standard Node.js assertions inside a self-contained sequential test block:
 
-    def create_checkout_session(self, amount: int, currency: str) -> Dict[str, Any]:
-        """
-        Creates a payment checkout session.
-        Args:
-            amount: Integer value in cents.
-            currency: 3-letter ISO code (e.g. usd).
-        """
-        payload = {"amount": amount, "currency": currency}
-        return self._request("POST", "/checkout/sessions", json=payload)
+```javascript
+// client.js
+class APIClient {
+   constructor(apiKey) {
+      if (!apiKey) throw new Error('API key cannot be empty.');
+      this.apiKey = apiKey;
+      this.baseUrl = 'https://api.example.com/v1';
+   }
+
+   async getResource(resourceId) {
+      const response = await fetch(`${this.baseUrl}/resources/${resourceId}`, {
+         method: 'GET',
+         headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+         }
+      });
+      if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+      return await response.json();
+   }
+}
+
+module.exports = { APIClient };
+```
+
+```javascript
+// test_client.test.js
+const assert = require('assert');
+const { APIClient } = require('./client');
+
+async function runTests() {
+   const originalFetch = globalThis.fetch;
+   try {
+      // Setup local request mock
+      globalThis.fetch = async (url, options) => {
+         assert.strictEqual(options.headers['Authorization'], 'Bearer test-key');
+         return {
+            ok: true,
+            json: async () => ({ id: '123', name: 'Sample' })
+         };
+      };
+
+      const client = new APIClient('test-key');
+      const data = await client.getResource('123');
+      assert.deepStrictEqual(data, { id: '123', name: 'Sample' });
+      
+      console.log('All tests passed successfully.');
+   } catch (error) {
+      console.error('Test execution failed:', error);
+      process.exit(1);
+   } finally {
+      globalThis.fetch = originalFetch;
+   }
+   process.exit(0);
+}
+
+runTests();
 ```
