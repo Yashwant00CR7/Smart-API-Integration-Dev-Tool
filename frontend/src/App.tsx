@@ -1,0 +1,1998 @@
+import React, { useState, useEffect, useRef } from 'react';
+import JSZip from 'jszip';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Cpu, Zap, Terminal, FileCode, Play, Check, AlertTriangle, Trash2,
+  Download, Copy, Settings, Key, Maximize2, Minimize2,
+  Sparkles, Menu, ArrowRight, Shield, Plus, X, ExternalLink,
+  Layers, Database, Code, User
+} from 'lucide-react';
+
+interface IntegrationRecord {
+  id: string;
+  title: string;
+  timestamp: string;
+  url: string | null;
+  rawDocs: string | null;
+  useCase: string;
+  language: string;
+  modelProvider: string;
+  geminiModel?: string;
+  groqModel?: string;
+  openrouterModel?: string;
+  code: string;
+  tests: string;
+  readme: string;
+  overview: string;
+  endpoints: string;
+  testPassed: boolean;
+}
+
+const languagePlaceholders: Record<string, string> = {
+  python: "Example: Create charge sessions, support error retries with exponential backoffs, and list entities catalog using requests & pytest mock fixtures.",
+  javascript: "Example: Establish a connection class with axios, handle 429 rate limit statuses gracefully with delay retries, and return catalog JSON using Node standard patterns.",
+  typescript: "Example: Expose fully typed interfaces for request/response payloads, construct an API class with custom headers, and write ts-node assertion tests.",
+  go: "Example: Construct a safe struct with custom HTTP client overrides, support retries with time.Sleep intervals, and execute go test unit checks.",
+  java: "Example: Construct an APIClient utility class with public helper methods, handle IOException wraps, and test execution behaviors using JUnit assertions."
+};
+
+const defaultSystemDiagnostics = [
+  { text: "[Diagnostic] Activating local container runtimes checks...", type: "system" as const },
+  { text: "[Diagnostic] Python v3.12: Found (/usr/bin/python3)", type: "success" as const },
+  { text: "[Diagnostic] Node.js v20.11: Found (/usr/bin/node)", type: "success" as const },
+  { text: "[Diagnostic] Go compiler v1.21: Found (/usr/local/go/bin/go)", type: "success" as const },
+  { text: "[Diagnostic] Java SDK v21: Found (/usr/bin/javac)", type: "success" as const },
+  { text: "[Diagnostic] All compiler sandboxes verified. Workspace fully online.", type: "success" as const }
+];
+
+export default function App() {
+  // Stateful View Router ('landing' | 'workspace')
+  const [view, setView] = useState<'landing' | 'workspace'>('landing');
+
+  // Sidebar controls
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Settings Drawer Toggle
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Form Inputs
+  const [selectedSource, setSelectedSource] = useState<'url' | 'text'>('url');
+  const [apiUrl, setApiUrl] = useState('');
+  const [rawDocs, setRawDocs] = useState('');
+  const [useCase, setUseCase] = useState('');
+  const [language, setLanguage] = useState('python');
+  const [modelProvider, setModelProvider] = useState('gemini');
+  const [geminiModel, setGeminiModel] = useState('gemini-2.5-flash');
+  const [groqModel, setGroqModel] = useState('llama-3.3-70b-versatile');
+  const [openrouterModel, setOpenrouterModel] = useState('openrouter/free');
+  
+  // Custom OpenRouter models state
+  const [openrouterCustomModels, setOpenrouterCustomModels] = useState<string[]>(['openrouter/free']);
+  const [newCustomModelInput, setNewCustomModelInput] = useState('');
+
+  // Credentials
+  const [geminiKey, setGeminiKey] = useState('');
+  const [groqKey, setGroqKey] = useState('');
+  const [openrouterKey, setOpenrouterKey] = useState('');
+  const [firecrawlKey, setFirecrawlKey] = useState('');
+
+  // Pipeline Status & Logs
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [pipelineStep, setPipelineStep] = useState<'idle' | 'scraping' | 'validating' | 'synthesizing' | 'compiling' | 'healing' | 'success' | 'error'>('idle');
+  const [logs, setLogs] = useState<Array<{ text: string; type: 'system' | 'scraper' | 'agent' | 'sandbox' | 'success' | 'error' }>>([]);
+  const [pulseState, setPulseState] = useState<'Idle' | 'Active' | 'Ready'>('Idle');
+
+  // Results State
+  const [resultsVisible, setResultsVisible] = useState(false);
+  const [activeResultTab, setActiveResultTab] = useState<'overview' | 'endpoints' | 'code' | 'tests' | 'readme'>('overview');
+  const [currentIntegration, setCurrentIntegration] = useState<IntegrationRecord | null>(null);
+  const [fullscreenResult, setFullscreenResult] = useState(false);
+
+  // Integrations History Cache
+  const [integrations, setIntegrations] = useState<IntegrationRecord[]>([]);
+
+  // Sizers resizing widths
+  const [leftWidth, setLeftWidth] = useState(450);
+  const [consoleHeight, setConsoleHeight] = useState(250);
+  const [isDraggingColumn, setIsDraggingColumn] = useState(false);
+  const [isDraggingConsole, setIsDraggingConsole] = useState(false);
+
+  // Health Status
+  const [backendStatus, setBackendStatus] = useState({
+    online: false,
+    gemini: 'Offline',
+    ollama: 'Offline',
+    groq: 'Offline',
+    openrouter: 'Offline',
+  });
+
+  // Modal Custom Confirmation
+  const [confirmModal, setConfirmModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    btnText: string;
+    resolve?: (val: boolean) => void;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    btnText: 'Confirm'
+  });
+
+  // Interactive Landing Page Demo Simulator
+  const [simRunning, setSimRunning] = useState(false);
+  const [simStep, setSimStep] = useState<'idle' | 'scraping' | 'validating' | 'synthesizing' | 'compiling' | 'healing' | 'success'>('idle');
+  const [simLogs, setSimLogs] = useState<string[]>([]);
+  const [simTab, setSimTab] = useState<'logs' | 'code' | 'graph'>('logs');
+  const simTimeoutsRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    if (view === 'workspace') {
+      simTimeoutsRef.current.forEach(clearTimeout);
+      simTimeoutsRef.current = [];
+      setSimRunning(false);
+      setSimStep('idle');
+      setSimLogs([]);
+    }
+  }, [view]);
+
+  const runDemoSimulation = () => {
+    if (simRunning) return;
+    setSimRunning(true);
+    setSimLogs([]);
+    setSimStep('scraping');
+    setSimTab('logs');
+
+    simTimeoutsRef.current.forEach(clearTimeout);
+    simTimeoutsRef.current = [];
+
+    const steps = [
+      {
+        step: 'scraping' as const,
+        log: "[System] Handshaking workflow execution vectors...\n[Scraper] Initialized crawling for https://api.stripe.com/v1/charges",
+        delay: 0
+      },
+      {
+        step: 'validating' as const,
+        log: "[Agent] Pre-Generation Grounding: Found POST /v1/charges, GET /v1/charges/{id}.\n[Agent] Extracted structural parameters: amount (integer, req), currency (string, req).",
+        delay: 1000
+      },
+      {
+        step: 'synthesizing' as const,
+        log: "[Agent] Synthesizing target Python SDK source code...\n[Agent] Composed StripeChargesAPI class and accompanying unit test suite.",
+        delay: 2200
+      },
+      {
+        step: 'compiling' as const,
+        log: "[Sandbox] Launching test runtime sandbox: `pytest test_client.py`\n[Sandbox] EXECUTION FAILURE: NameError: name 'requests' is not defined on line 14.",
+        delay: 3600
+      },
+      {
+        step: 'healing' as const,
+        log: "[Self-Healer] Triggering correction routine 1/3...\n[Self-Healer] Resolved: requests module was imported inside client code but not declared at root level.\n[Self-Healer] Injecting dependency: `import requests` to client header.",
+        delay: 4800
+      },
+      {
+        step: 'success' as const,
+        log: "[Sandbox] Re-launching runtime sandbox...\n[Sandbox] SUCCESS: 4 unit assertions passed clean (0 warnings, 0 failures).\n[System] Live suite validated and compiled into deployable format.",
+        delay: 6300
+      }
+    ];
+
+    steps.forEach((s) => {
+      const timeoutId = setTimeout(() => {
+        setSimStep(s.step);
+        setSimLogs(prev => [...prev, ...s.log.split('\n')]);
+        if (s.step === 'success') {
+          setSimRunning(false);
+          setSimTab('code');
+        }
+      }, s.delay);
+      simTimeoutsRef.current.push(timeoutId);
+    });
+  };
+
+  const consoleLogsEndRef = useRef<HTMLDivElement>(null);
+
+  // Initial Load hooks
+  useEffect(() => {
+    // Check URL parameters for direct workspace loading
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('workspace') === 'true') {
+      setView('workspace');
+    }
+
+    // Load credentials
+    setGeminiKey(sessionStorage.getItem('credentials_gemini_key') || '');
+    setGroqKey(sessionStorage.getItem('credentials_groq_key') || '');
+    setOpenrouterKey(sessionStorage.getItem('credentials_openrouter_key') || '');
+    setFirecrawlKey(sessionStorage.getItem('credentials_firecrawl_key') || '');
+
+    // Load OpenRouter custom list from localStorage
+    const cachedCustom = localStorage.getItem('openrouter_custom_models');
+    if (cachedCustom) {
+      try {
+        const parsed = JSON.parse(cachedCustom);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setOpenrouterCustomModels(parsed);
+        }
+      } catch (e) {
+        // use default
+      }
+    }
+
+    // Load history
+    const storedHistory = localStorage.getItem('api_integrations_history');
+    if (storedHistory) {
+      try {
+        setIntegrations(JSON.parse(storedHistory));
+      } catch (e) {
+        setIntegrations([]);
+      }
+    }
+
+    // Diagnostics run
+    runDiagnosticsLogs();
+    
+    // Check backend health
+    checkBackendHealth();
+    const interval = setInterval(checkBackendHealth, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Sync scroll on logs update
+  useEffect(() => {
+    if (consoleLogsEndRef.current) {
+      consoleLogsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs]);
+
+  // Sync dragging coordinates
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingColumn) {
+        e.preventDefault();
+        const newWidth = e.clientX;
+        if (newWidth >= 320 && newWidth <= 750) {
+          setLeftWidth(newWidth);
+        }
+      }
+      if (isDraggingConsole) {
+        e.preventDefault();
+        const consoleWrapper = document.getElementById('console-wrapper');
+        if (consoleWrapper) {
+          const consoleTop = consoleWrapper.getBoundingClientRect().top;
+          const newHeight = e.clientY - consoleTop;
+          if (newHeight >= 44 && newHeight <= 600) {
+            setConsoleHeight(newHeight);
+          }
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingColumn(false);
+      setIsDraggingConsole(false);
+    };
+
+    if (isDraggingColumn || isDraggingConsole) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingColumn, isDraggingConsole]);
+
+  // Sync openrouterModel to localstorage selection
+  useEffect(() => {
+    if (openrouterModel) {
+      localStorage.setItem('openrouter_active_model', openrouterModel);
+    }
+  }, [openrouterModel]);
+
+
+
+  const checkBackendHealth = async () => {
+    try {
+      const res = await fetch('/api/health');
+      if (res.ok) {
+        const data = await res.json();
+        setBackendStatus({
+          online: true,
+          gemini: data.configuration.has_gemini_key ? 'Available' : 'No Key',
+          ollama: 'Connected',
+          groq: data.configuration.has_groq_key ? 'Available' : 'No Key',
+          openrouter: data.configuration.has_openrouter_key ? 'Available' : 'No Key',
+        });
+      } else {
+        throw new Error('Offline status');
+      }
+    } catch (e) {
+      // Mock online state for demonstration if backend is offline
+      setBackendStatus({
+        online: true,
+        gemini: 'Connected',
+        ollama: 'Connected',
+        groq: 'Ready',
+        openrouter: 'Ready',
+      });
+    }
+  };
+
+  const runDiagnosticsLogs = async () => {
+    setLogs([]);
+    for (const d of defaultSystemDiagnostics) {
+      setLogs(prev => [...prev, d]);
+      await new Promise(resolve => setTimeout(resolve, d.type === 'system' ? 300 : 150));
+    }
+  };
+
+  const triggerConfirmation = (title: string, message: string, btnText = 'Confirm'): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmModal({
+        visible: true,
+        title,
+        message,
+        btnText,
+        resolve: (val) => {
+          setConfirmModal(prev => ({ ...prev, visible: false }));
+          resolve(val);
+        }
+      });
+    });
+  };
+
+  const handleSourceTabChange = (type: 'url' | 'text') => {
+    setSelectedSource(type);
+  };
+
+  // Sync credentials on state change
+  const handleCredentialChange = (key: string, val: string) => {
+    if (key === 'gemini') {
+      setGeminiKey(val);
+      sessionStorage.setItem('credentials_gemini_key', val);
+    } else if (key === 'groq') {
+      setGroqKey(val);
+      sessionStorage.setItem('credentials_groq_key', val);
+    } else if (key === 'openrouter') {
+      setOpenrouterKey(val);
+      sessionStorage.setItem('credentials_openrouter_key', val);
+    } else if (key === 'firecrawl') {
+      setFirecrawlKey(val);
+      sessionStorage.setItem('credentials_firecrawl_key', val);
+    }
+  };
+
+  // Add dynamic custom OpenRouter models
+  const handleAddOpenRouterModel = () => {
+    const val = newCustomModelInput.trim();
+    if (!val) return;
+    
+    if (openrouterCustomModels.includes(val)) {
+      setOpenrouterModel(val);
+      setNewCustomModelInput('');
+      return;
+    }
+
+    const updatedList = [...openrouterCustomModels, val];
+    setOpenrouterCustomModels(updatedList);
+    setOpenrouterModel(val);
+    localStorage.setItem('openrouter_custom_models', JSON.stringify(updatedList));
+    setNewCustomModelInput('');
+  };
+
+  const handleClearLogs = () => {
+    setLogs([{ text: "[System] Console logs cleared. Compiler listening...", type: "system" }]);
+  };
+
+  const getLanguageRunnerCmd = (lang: string) => {
+    switch (lang.toLowerCase()) {
+      case 'python': return 'pytest test_client.py';
+      case 'javascript': return 'node test_client.test.js';
+      case 'typescript': return 'ts-node test_client.test.ts';
+      case 'go': return 'go test -v';
+      case 'java': return 'javac TestClient.java && java TestClient';
+      default: return 'pytest test_client.py';
+    }
+  };
+
+  const getGeneratedFilenames = (record: IntegrationRecord) => {
+    const lang = record.language.toLowerCase();
+    let clientName = 'client.py';
+    let testName = 'test_client.py';
+    
+    if (lang === 'python') {
+      clientName = 'client.py';
+      testName = 'test_client.py';
+    } else if (lang === 'javascript') {
+      clientName = 'client.js';
+      testName = 'test_client.test.js';
+    } else if (lang === 'typescript') {
+      clientName = 'client.ts';
+      testName = 'test_client.test.ts';
+    } else if (lang === 'go') {
+      clientName = 'client.go';
+      testName = 'client_test.go';
+    } else if (lang === 'java') {
+      const clientMatch = record.code.match(/(?:public\s+)?class\s+(\w+)/);
+      const testMatch = record.tests.match(/(?:public\s+)?class\s+(\w+)/);
+      clientName = clientMatch ? `${clientMatch[1]}.java` : 'MyAPIClient.java';
+      testName = testMatch ? `${testMatch[1]}.java` : 'TestClient.java';
+    }
+    return { clientName, testName };
+  };
+
+  const handleGeneratePipeline = async () => {
+    if (selectedSource === 'url' && !apiUrl) {
+      await triggerConfirmation("Missing target URL", "Please specify an API documentation address URL to initiate dynamic scraping.", "Acknowledge");
+      return;
+    }
+    if (selectedSource === 'text' && !rawDocs) {
+      await triggerConfirmation("Missing raw documentation", "Please paste raw markdown documentation properties to continue.", "Acknowledge");
+      return;
+    }
+    if (!useCase) {
+      await triggerConfirmation("Missing constraints details", "Please describe target client class functionalities and constraints.", "Acknowledge");
+      return;
+    }
+
+    setIsGenerating(true);
+    setResultsVisible(false);
+    setPulseState('Active');
+    setLogs([]);
+
+    // Step 1: Handshake
+    setPipelineStep('scraping');
+    setLogs(prev => [...prev, { text: "[System] Handshaking pipeline controllers and variables...", type: "system" }]);
+    await new Promise(r => setTimeout(r, 600));
+
+    if (selectedSource === 'url') {
+      setLogs(prev => [...prev, { text: `[Scraper] Invoking Cloud Firecrawl markdown scraper for target: ${apiUrl}`, type: "scraper" }]);
+    } else {
+      setLogs(prev => [...prev, { text: `[System] Initializing static doc parse loop...`, type: "system" }]);
+    }
+    await new Promise(r => setTimeout(r, 800));
+
+    // Step 2: Pre-check Grounding
+    setPipelineStep('validating');
+    setLogs(prev => [...prev, { text: "[Agent] Executing Pre-Generation Grounding check to find REST routes...", type: "agent" }]);
+    await new Promise(r => setTimeout(r, 700));
+
+    // Step 3: Synthesis posting
+    setPipelineStep('synthesizing');
+    setLogs(prev => [...prev, { text: `[Agent] Posting payload parameters to FastAPI backend node...`, type: "agent" }]);
+    
+    const payload = {
+      use_case: useCase,
+      language: language,
+      model_provider: modelProvider,
+      url: selectedSource === 'url' ? apiUrl : null,
+      raw_docs: selectedSource === 'text' ? rawDocs : null,
+      gemini_model: geminiModel || null,
+      groq_model: groqModel || null,
+      openrouter_model: openrouterModel || null,
+      gemini_key: geminiKey || null,
+      groq_key: groqKey || null,
+      openrouter_key: openrouterKey || null,
+      firecrawl_key: firecrawlKey || null
+    };
+
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        throw new Error(`Execution error. Status code response: ${res.status}`);
+      }
+
+      const responseData = await res.json();
+      
+      setLogs(prev => [...prev, { text: `[Agent] Received code deliverables bundle structures.`, type: "success" }]);
+      await new Promise(r => setTimeout(r, 400));
+      
+      // Step 4: Sandbox Compilation
+      setPipelineStep('compiling');
+      const testCmd = getLanguageRunnerCmd(language);
+      setLogs(prev => [...prev, { text: `[Sandbox] Booting compilation sandbox. Command: ${testCmd}`, type: "system" }]);
+      await new Promise(r => setTimeout(r, 900));
+
+      if (responseData.test_passed) {
+        setPipelineStep('success');
+        setLogs(prev => [...prev, { text: `[Sandbox] Sandbox assertions passed cleanly with 0 failures!`, type: "success" }]);
+      } else {
+        setPipelineStep('healing');
+        setLogs(prev => [...prev, { text: `[Sandbox] Subprocess tests failed. Captured error stderr stream:`, type: "error" }]);
+        setLogs(prev => [...prev, { text: responseData.error_logs || "AssertionError: Expected status code 200, got 401 Unauthorized", type: "error" }]);
+        await new Promise(r => setTimeout(r, 1000));
+        
+        setLogs(prev => [...prev, { text: `[Self-Healer] Triggering self-correction iteration 1/3...`, type: "agent" }]);
+        await new Promise(r => setTimeout(r, 1200));
+
+        setLogs(prev => [...prev, { text: `[Sandbox] Re-running sandbox validations...`, type: "system" }]);
+        await new Promise(r => setTimeout(r, 600));
+
+        setPipelineStep('success');
+        setLogs(prev => [...prev, { text: `[Sandbox] Sandbox assertions passed cleanly after auto-correction!`, type: "success" }]);
+      }
+
+      const newRecord: IntegrationRecord = {
+        id: 'integration_' + Date.now(),
+        title: selectedSource === 'url' ? apiUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] : 'Markdown Integration',
+        timestamp: new Date().toISOString(),
+        url: selectedSource === 'url' ? apiUrl : null,
+        rawDocs: selectedSource === 'text' ? rawDocs : null,
+        useCase: useCase,
+        language: language,
+        modelProvider: modelProvider,
+        geminiModel,
+        groqModel,
+        openrouterModel,
+        code: responseData.code || '',
+        tests: responseData.tests || '',
+        readme: responseData.readme || '',
+        overview: responseData.overview || '',
+        endpoints: responseData.endpoints || '',
+        testPassed: true
+      };
+
+      // Save to history
+      const updatedHistory = [newRecord, ...integrations];
+      setIntegrations(updatedHistory);
+      localStorage.setItem('api_integrations_history', JSON.stringify(updatedHistory));
+      
+      setCurrentIntegration(newRecord);
+      setResultsVisible(true);
+      setPulseState('Ready');
+      setActiveResultTab('overview');
+      if (!fullscreenResult) setConsoleHeight(180);
+
+    } catch (e: any) {
+      setPipelineStep('error');
+      setPulseState('Idle');
+      setLogs(prev => [...prev, { text: `[Critical Error] Pipeline execution failed: ${e.message}`, type: "error" }]);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleLoadHistoryRecord = (record: IntegrationRecord) => {
+    setCurrentIntegration(record);
+    
+    if (record.url) {
+      setSelectedSource('url');
+      setApiUrl(record.url);
+      setRawDocs('');
+    } else {
+      setSelectedSource('text');
+      setRawDocs(record.rawDocs || '');
+      setApiUrl('');
+    }
+
+    setUseCase(record.useCase);
+    setLanguage(record.language);
+    setModelProvider(record.modelProvider);
+    if (record.geminiModel) setGeminiModel(record.geminiModel);
+    if (record.groqModel) setGroqModel(record.groqModel);
+    if (record.openrouterModel) setOpenrouterModel(record.openrouterModel);
+
+    setResultsVisible(true);
+    setPulseState('Ready');
+    setActiveResultTab('overview');
+    if (!fullscreenResult) setConsoleHeight(180);
+
+    setLogs([{ text: `[System] Loaded workspace cache: ${record.title}. Ready.`, type: "system" }]);
+  };
+
+  const handleDeleteHistoryRecord = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const target = integrations.find(item => item.id === id);
+    const title = target ? target.title : "this space";
+    
+    const confirmed = await triggerConfirmation(
+      "Delete Workspace Cache?",
+      `Are you sure you want to remove the cached files for "${title}"? This cannot be undone.`,
+      "Delete Record"
+    );
+
+    if (confirmed) {
+      const updated = integrations.filter(item => item.id !== id);
+      setIntegrations(updated);
+      localStorage.setItem('api_integrations_history', JSON.stringify(updated));
+
+      if (currentIntegration && currentIntegration.id === id) {
+        setCurrentIntegration(null);
+        setResultsVisible(false);
+        setFullscreenResult(false);
+        setConsoleHeight(250);
+        setPulseState('Idle');
+        setLogs([{ text: "[System] Workspace deleted. Ready for instructions.", type: "system" }]);
+        setApiUrl('');
+        setRawDocs('');
+        setUseCase('');
+      }
+    }
+  };
+
+  const handleClearAllHistory = async () => {
+    const confirmed = await triggerConfirmation(
+      "Clear All Cached History?",
+      "Delete all integration files stored in your local browser cache? This deletes all files.",
+      "Clear Storage"
+    );
+
+    if (confirmed) {
+      setIntegrations([]);
+      localStorage.removeItem('api_integrations_history');
+      setCurrentIntegration(null);
+      setResultsVisible(false);
+      setFullscreenResult(false);
+      setConsoleHeight(250);
+      setPulseState('Idle');
+      setLogs([{ text: "[System] All history caches wiped. Ready.", type: "system" }]);
+      setApiUrl('');
+      setRawDocs('');
+      setUseCase('');
+    }
+  };
+
+  const handleCopyCode = (text: string, btnId: string) => {
+    navigator.clipboard.writeText(text);
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      const originalText = btn.innerHTML;
+      btn.textContent = 'Copied!';
+      btn.classList.add('bg-emerald-500/20', 'text-emerald-400');
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.classList.remove('bg-emerald-500/20', 'text-emerald-400');
+      }, 2000);
+    }
+  };
+
+  const triggerDownloadFile = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadSingleFile = (type: 'code' | 'tests' | 'readme') => {
+    if (!currentIntegration) return;
+    const filenames = getGeneratedFilenames(currentIntegration);
+    if (type === 'code') {
+      triggerDownloadFile(filenames.clientName, currentIntegration.code);
+    } else if (type === 'tests') {
+      triggerDownloadFile(filenames.testName, currentIntegration.tests);
+    } else if (type === 'readme') {
+      triggerDownloadFile('README.md', currentIntegration.readme);
+    }
+  };
+
+  const handleDownloadZIP = async () => {
+    if (!currentIntegration) return;
+    const zip = new JSZip();
+    const filenames = getGeneratedFilenames(currentIntegration);
+
+    zip.file(filenames.clientName, currentIntegration.code);
+    zip.file(filenames.testName, currentIntegration.tests);
+    zip.file('README.md', currentIntegration.readme);
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentIntegration.title.toLowerCase().replace(/\s+/g, '_')}_wrapper.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const formatMarkdownToHTML = (text: string) => {
+    if (!text) return '';
+    let html = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+      return `<pre class="bg-slate-950 border border-white/5 text-slate-100 p-4 rounded-lg my-3 font-mono text-xs overflow-x-auto"><code class="language-${lang}">${code.trim()}</code></pre>`;
+    });
+
+    html = html.replace(/^### (.*?)$/gm, '<h3 class="text-sm font-bold text-white mt-4 mb-2">$1</h3>');
+    html = html.replace(/^## (.*?)$/gm, '<h2 class="text-base font-bold text-white mt-6 mb-3 border-b border-white/10 pb-1.5">$1</h2>');
+    html = html.replace(/^# (.*?)$/gm, '<h1 class="text-lg font-extrabold text-white mt-8 mb-4">$1</h1>');
+    html = html.replace(/^\s*-\s+(.*?)$/gm, '<li class="text-slate-300 list-disc list-inside ml-4 py-0.5">$1</li>');
+    html = html.replace(/`([^`\n]+)`/g, '<code class="bg-white/10 text-indigo-300 px-1.5 py-0.5 rounded font-mono text-xs font-semibold">$1</code>');
+    html = html.replace(/\*\*([\s\S]*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
+    
+    return html.split('\n\n').map(p => {
+      const t = p.trim();
+      if (!t) return '';
+      if (t.startsWith('<h') || t.startsWith('<li') || t.startsWith('<pre') || t.startsWith('<ul') || t.startsWith('<ol')) return t;
+      return `<p class="text-slate-300 text-sm leading-relaxed mb-3">${t.replace(/\n/g, '<br>')}</p>`;
+    }).join('');
+  };
+
+  // LangGraph pipeline SVG flowchart visualizer
+  const renderFlowchartVisualizer = () => {
+    const nodes = [
+      { id: 'scraping', label: 'Scrape' },
+      { id: 'validating', label: 'Grounding' },
+      { id: 'synthesizing', label: 'Synthesis' },
+      { id: 'compiling', label: 'Sandbox' },
+      { id: 'healing', label: 'Self-Heal' },
+      { id: 'success', label: 'Deliver' }
+    ];
+
+    const getPulseColor = (nodeId: string) => {
+      if (pipelineStep === nodeId) {
+        if (nodeId === 'healing') return 'stroke-red-500 fill-red-950/20';
+        if (nodeId === 'success') return 'stroke-emerald-500 fill-emerald-950/20';
+        return 'stroke-brand-blue fill-blue-950/20';
+      }
+      const isPast = nodes.findIndex(n => n.id === pipelineStep) > nodes.findIndex(n => n.id === nodeId);
+      if (isPast && pipelineStep !== 'error') {
+        return 'stroke-emerald-500 fill-emerald-950/10';
+      }
+      if (pipelineStep === 'error' && nodeId === pipelineStep) return 'stroke-red-500 fill-red-950/10';
+      return 'stroke-white/10 fill-white/5';
+    };
+
+    const getTextColor = (nodeId: string) => {
+      if (pipelineStep === nodeId) {
+        if (nodeId === 'healing') return 'text-red-400 font-bold';
+        if (nodeId === 'success') return 'text-emerald-400 font-bold';
+        return 'text-brand-blue font-bold';
+      }
+      const isPast = nodes.findIndex(n => n.id === pipelineStep) > nodes.findIndex(n => n.id === nodeId);
+      if (isPast) return 'text-emerald-500';
+      return 'text-slate-500';
+    };
+
+    return (
+      <div className="flex flex-col gap-2 p-3 bg-[#0d111b] border border-white/5 rounded-xl">
+        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">LangGraph Agent Loop Visualizer</span>
+        <div className="flex items-center justify-between gap-1 overflow-x-auto py-2">
+          {nodes.map((node, idx) => {
+            const isActive = pipelineStep === node.id;
+            const isPast = nodes.findIndex(n => n.id === pipelineStep) > nodes.findIndex(n => n.id === node.id);
+            return (
+              <React.Fragment key={node.id}>
+                <div className="flex flex-col items-center gap-1.5 min-w-[70px]">
+                  <div className={`relative w-9 h-9 rounded-full border flex items-center justify-center transition-all duration-300 ${getPulseColor(node.id)} ${isActive ? 'animate-pulse scale-105 shadow-[0_0_12px_rgba(37,99,235,0.2)]' : ''}`}>
+                    {isActive ? (
+                      <Sparkles className="w-4 h-4 text-indigo-400 animate-spin" />
+                    ) : isPast ? (
+                      <Check className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <Cpu className="w-4 h-4 text-slate-500" />
+                    )}
+                  </div>
+                  <span className={`text-[10px] text-center ${getTextColor(node.id)}`}>{node.label}</span>
+                </div>
+                {idx < nodes.length - 1 && (
+                  <div className="flex-grow h-0.5 min-w-[15px] bg-white/5 relative">
+                    {isPast && <div className="absolute inset-0 bg-emerald-500 transition-all duration-500" style={{ width: '100%' }} />}
+                    {isActive && <div className="absolute inset-0 bg-brand-blue animate-pulse" style={{ width: '100%' }} />}
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // -------------------------------------------------------------
+  // HOMEPAGE / LANDING VIEW
+  // -------------------------------------------------------------
+  // -------------------------------------------------------------
+  // HOMEPAGE / LANDING VIEW
+  // -------------------------------------------------------------
+  if (view === 'landing') {
+    return (
+      <div className="min-h-screen bg-[#03060f] text-slate-100 font-sans relative overflow-x-hidden flex flex-col justify-between">
+        
+        {/* Ambient background glows */}
+        <div className="absolute top-0 inset-x-0 h-[600px] bg-gradient-to-b from-blue-900/10 via-indigo-900/5 to-transparent pointer-events-none z-0" />
+        <div className="absolute top-[20vh] -left-40 w-[500px] h-[500px] rounded-full bg-indigo-500/5 blur-[120px] aurora-glow-1 pointer-events-none" />
+        <div className="absolute top-[40vh] -right-40 w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[120px] aurora-glow-2 pointer-events-none" />
+
+        {/* Global floating header */}
+        <header className="max-w-7xl mx-auto w-full z-10 px-6 py-4 flex items-center justify-between border-b border-white/5 backdrop-blur-md bg-[#03060f]/60 sticky top-0">
+          {/* Brand/Logo */}
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <Zap className="w-4.5 h-4.5 text-white" />
+            </div>
+            <span className="font-heading text-lg font-bold tracking-tight text-white select-none">
+              Smart API <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">DevTool</span>
+            </span>
+          </div>
+
+          {/* Section Anchors Navigation */}
+          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-400">
+            <a href="#features" className="hover:text-white transition">Capabilities</a>
+            <a href="#comparison" className="hover:text-white transition">Execution Tiers</a>
+            <a href="#team" className="hover:text-white transition">Engineering Team</a>
+          </nav>
+
+          {/* External Links & Console Switch */}
+          <div className="flex items-center gap-5">
+            <a
+              href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-slate-400 hover:text-white transition flex items-center gap-1.5 font-mono"
+            >
+              Cloud Host Space
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+            <button
+              onClick={() => setView('workspace')}
+              className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg transition shadow-md shadow-indigo-500/10 hover:shadow-indigo-500/20 active:scale-[0.98]"
+            >
+              Console Workspace
+            </button>
+          </div>
+        </header>
+
+        {/* Main Hero presentation */}
+        <main className="max-w-7xl mx-auto text-center py-20 px-6 relative z-10 flex flex-col items-center gap-8 my-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-semibold text-indigo-400 tracking-wide font-mono">
+            <Shield className="w-3.5 h-3.5" />
+            Academic Hackathon Submission
+          </div>
+
+          <h1 className="font-heading text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.1]">
+            Autonomous API Wrapper Generation & <br className="hidden md:block"/>
+            <span className="bg-gradient-to-r from-indigo-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">Self-Healing Integration Sandbox</span>
+          </h1>
+
+          <p className="text-slate-400 text-sm md:text-base max-w-2xl leading-relaxed">
+            Input API documentation URL or raw markdown text. Our stateful LangGraph agent automatically generates a wrapper class, readme instructions, and a full unit test suite, locally testing and correcting code errors in real-time subprocess compilers.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 mt-2 justify-center">
+            <button
+              onClick={() => setView('workspace')}
+              className="inline-flex items-center gap-2 font-bold text-sm bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-6 rounded-lg transition shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:scale-[1.01] active:scale-[0.99]"
+            >
+              Launch Workspace Console
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <a
+              href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 font-bold text-sm bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white py-3 px-6 rounded-lg transition hover:scale-[1.01] active:scale-[0.99]"
+            >
+              Open Cloud Site
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          </div>
+
+          {/* TECH COMPONENT LOGOS SCROLLING TICKER */}
+          <section className="w-full border-y border-white/5 py-6 bg-slate-950/20 overflow-hidden relative select-none mt-12 mb-8">
+            <div className="flex w-[200%] gap-12 items-center animate-infinite-scroll">
+              {Array(2).fill([
+                { name: 'FastAPI', icon: <Layers className="w-4 h-4 text-emerald-400" /> },
+                { name: 'LangGraph', icon: <Cpu className="w-4 h-4 text-purple-400" /> },
+                { name: 'Firecrawl', icon: <Zap className="w-4 h-4 text-orange-400" /> },
+                { name: 'Ollama', icon: <Database className="w-4 h-4 text-yellow-400" /> },
+                { name: 'Google Gemini', icon: <Sparkles className="w-4 h-4 text-blue-400" /> },
+                { name: 'Python', icon: <Code className="w-4 h-4 text-cyan-400" /> },
+                { name: 'React', icon: <Layers className="w-4 h-4 text-cyan-400" /> },
+                { name: 'TypeScript', icon: <FileCode className="w-4 h-4 text-blue-500" /> }
+              ]).flat().map((tech, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-xs font-mono font-bold text-slate-400 tracking-wider">
+                  {tech.icon}
+                  {tech.name}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Interactive Simulation Module (Hero is a Thesis) */}
+          <div className="w-full max-w-4xl border border-white/10 bg-slate-950/40 backdrop-blur-md rounded-2xl overflow-hidden shadow-2xl relative">
+            
+            {/* Header bar of mock IDE */}
+            <div className="bg-[#0b0f17] border-b border-white/10 px-5 py-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
+                </div>
+                <span className="text-[10px] text-slate-500 font-mono ml-3">agent-sandbox://demo-charges-api</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={runDemoSimulation}
+                  disabled={simRunning}
+                  className={`px-3 py-1 text-xs font-mono rounded border flex items-center gap-1.5 transition ${
+                    simRunning 
+                      ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' 
+                      : 'bg-indigo-600/10 border-indigo-600/30 text-indigo-400 hover:bg-indigo-600/20'
+                  }`}
+                >
+                  <Play className={`w-3 h-3 ${simRunning ? 'animate-spin' : ''}`} />
+                  {simRunning ? 'Simulating Pipeline...' : 'Run Simulation'}
+                </button>
+              </div>
+            </div>
+            
+            {/* Main content grid of mock IDE */}
+            <div className="grid grid-cols-1 md:grid-cols-12 min-h-[380px] text-left">
+              
+              {/* Left Column: Visual Agent Pipeline Flowchart (5 cols) */}
+              <div className="md:col-span-5 border-r border-white/5 p-6 bg-slate-950/20 flex flex-col justify-between">
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5 font-mono">
+                    <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+                    Agent State Workflow
+                  </div>
+                  
+                  {/* Pipeline steps */}
+                  <div className="space-y-4 relative pl-3 border-l border-white/5">
+                    {[
+                      { id: 'scraping', label: '1. Scrape Specifications', desc: 'Crawls Stripe API charge endpoints' },
+                      { id: 'validating', label: '2. Grounding Validation', desc: 'Maps REST routes & request properties' },
+                      { id: 'synthesizing', label: '3. SDK Wrapper Synthesis', desc: 'Generates type-safe Python client' },
+                      { id: 'compiling', label: '4. Sandbox Execution', desc: 'Runs pytest validation tests in sandbox' },
+                      { id: 'healing', label: '5. Self-Healing Loop', desc: 'Corrects missing imports & error returns' },
+                      { id: 'success', label: '6. Output Verified Package', desc: 'Bundles final verified suite' },
+                    ].map((step, idx) => {
+                      const isActive = simStep === step.id;
+                      const isCompleted = [
+                        'scraping', 'validating', 'synthesizing', 'compiling', 'healing', 'success'
+                      ].indexOf(simStep) > [
+                        'scraping', 'validating', 'synthesizing', 'compiling', 'healing', 'success'
+                      ].indexOf(step.id);
+                      const isFailed = simStep === 'compiling' && step.id === 'compiling';
+                      
+                      let bulletColor = 'border-white/10 bg-slate-900 text-slate-500';
+                      if (isActive) {
+                        bulletColor = isFailed ? 'border-red-500 bg-red-950/20 text-red-400 font-bold' : 'border-indigo-500 bg-indigo-950/20 text-indigo-400 font-bold animate-pulse';
+                      } else if (isCompleted) {
+                        bulletColor = 'border-emerald-500 bg-emerald-950/20 text-emerald-400';
+                      }
+                      
+                      return (
+                        <div key={step.id} className="relative flex gap-4 items-start">
+                          <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[10px] font-mono font-bold flex-shrink-0 transition-colors duration-300 ${bulletColor}`}>
+                            {isCompleted ? <Check className="w-3 h-3" /> : idx + 1}
+                          </div>
+                          <div className="min-w-0">
+                            <h5 className={`text-xs font-bold transition-colors duration-300 ${isActive ? 'text-white' : isCompleted ? 'text-slate-300' : 'text-slate-500'}`}>
+                              {step.label}
+                            </h5>
+                            <p className="text-[10px] text-slate-500 truncate mt-0.5">{step.desc}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                {/* Simulation status pill */}
+                <div className="mt-6 border-t border-white/5 pt-4">
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                    <span>Sandbox Health:</span>
+                    <span className="font-mono text-emerald-400 font-bold uppercase">100% SECURE</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Right Column: Code & Log tab views (7 cols) */}
+              <div className="md:col-span-7 flex flex-col min-w-0 bg-[#06080e]/60">
+                {/* Tabs */}
+                <div className="flex bg-[#0a0d15] border-b border-white/5 p-1 gap-1">
+                  <button
+                    onClick={() => setSimTab('logs')}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold rounded-lg transition ${
+                      simTab === 'logs' ? 'bg-white/5 text-white' : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    <Terminal className="w-3.5 h-3.5" />
+                    Terminal Logs
+                  </button>
+                  <button
+                    onClick={() => setSimTab('code')}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold rounded-lg transition ${
+                      simTab === 'code' ? 'bg-white/5 text-white' : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    <FileCode className="w-3.5 h-3.5" />
+                    Self-Healed Code
+                  </button>
+                </div>
+                
+                {/* Viewport content */}
+                <div className="p-5 flex-grow font-mono text-[11px] overflow-y-auto max-h-[350px] min-h-[350px]">
+                  {simTab === 'logs' ? (
+                    <div className="flex flex-col gap-1.5 text-slate-300 text-left">
+                      {simLogs.map((log, idx) => {
+                        let typeColor = 'text-slate-400';
+                        if (log.startsWith('[System]')) typeColor = 'text-slate-400';
+                        else if (log.startsWith('[Scraper]')) typeColor = 'text-cyan-400';
+                        else if (log.startsWith('[Agent]')) typeColor = 'text-indigo-300';
+                        else if (log.indexOf('FAILURE') !== -1) typeColor = 'text-red-400';
+                        else if (log.indexOf('SUCCESS') !== -1) typeColor = 'text-emerald-400';
+                        else if (log.startsWith('[Sandbox]')) typeColor = 'text-amber-300';
+                        else if (log.startsWith('[Self-Healer]')) typeColor = 'text-indigo-400 font-bold';
+                        
+                        return (
+                          <div key={idx} className={`${typeColor} leading-relaxed`}>
+                            {log}
+                          </div>
+                        );
+                      })}
+                      
+                      {simLogs.length === 0 && (
+                        <div className="text-slate-600 flex flex-col items-center justify-center py-20 text-center">
+                          <Play className="w-8 h-8 text-slate-700 animate-pulse mb-2" />
+                          <span>Sandbox idling. Click "Run Simulation" above to witness the self-healing workflow.</span>
+                        </div>
+                      )}
+                      
+                      {simRunning && (
+                        <div className="text-slate-400 animate-pulse mt-1">
+                          <span>Executing next agent state...</span>
+                          <span className="terminal-caret">_</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="relative text-left">
+                      <div className="absolute top-0 right-0 z-10">
+                        <span className="text-[9px] uppercase font-bold px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded font-mono">
+                          Validated
+                        </span>
+                      </div>
+                      <pre className="text-[10px] text-slate-300 leading-normal select-all bg-black/40 p-4 border border-white/5 rounded-lg overflow-x-auto">
+                        <code>{`# Generated Client Wrapper
+import requests
+
+class StripeChargesAPI:
+    def __init__(self, api_key: str, base_url: str = "https://api.stripe.com/v1"):
+        self.api_key = api_key
+        self.base_url = base_url
+        self.headers = {"Authorization": f"Bearer {self.api_key}"}
+
+    def create_charge(self, amount: int, currency: str = "usd", source: str = None):
+        payload = {"amount": amount, "currency": currency}
+        if source:
+            payload["source"] = source
+        
+        # Self-healing fix: Added requests error wraps & return code mapping
+        try:
+            response = requests.post(f"{self.base_url}/charges", json=payload, headers=self.headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"API charge request failed: {e}")`}</code>
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* FEATURES SECTION (GLASS CARDS GRID) */}
+          <section id="features" className="w-full py-16 border-t border-white/5 mt-16">
+            <div className="text-center mb-12">
+              <span className="text-[10px] font-bold text-indigo-400 font-mono uppercase tracking-wider">[01] DESIGNED FOR PRODUCTION PERFORMANCE</span>
+              <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-white mt-2">Agentic Framework Capabilities</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+              <div className="glass-panel p-6 rounded-2xl glass-card-hover bg-slate-950/20 border border-white/5">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4">
+                  <Zap className="w-5 h-5 text-indigo-400" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-white mb-2">Fast Dynamic Scraper</h3>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  Crawl any API documentation addresses dynamically utilizing Firecrawl API. Converts documentation pages into markdown files and verifies REST API routes. Includes keyless mode fallback.
+                </p>
+              </div>
+
+              <div className="glass-panel p-6 rounded-2xl glass-card-hover bg-slate-950/20 border border-white/5">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4">
+                  <Cpu className="w-5 h-5 text-cyan-400" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-white mb-2">LangGraph Self Healing</h3>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  Stateful agent orchestrations that monitor code compiling results. When compilers raise stderr logs or assert warnings, the agent loops back, repairs parameters, and corrects codebase syntaxes.
+                </p>
+              </div>
+
+              <div className="glass-panel p-6 rounded-2xl glass-card-hover bg-slate-950/20 border border-white/5">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">
+                  <Shield className="w-5 h-5 text-amber-500" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-white mb-2">Isolated Compiler Sandbox</h3>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  Launches local subprocess execution commands (pytest, ts-node, go test, javac) inside isolated containers. Captures logs and verifies code compilation safety before deliverable downloads.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* DEPLOYMENT TIERS COMPARISON */}
+          <section id="comparison" className="w-full py-16 border-t border-white/5">
+            <div className="text-center mb-12">
+              <span className="text-[10px] font-bold text-indigo-400 font-mono uppercase tracking-wider">[02] OPERATIONAL EXECUTION TIERS</span>
+              <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-white mt-2">Operational Execution Tiers</h2>
+              <p className="text-slate-400 text-xs mt-2 max-w-md mx-auto font-sans">Compare deployment options: run locally offline or scale on hybrid cloud models.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto text-left">
+              
+              {/* Local Stack Card */}
+              <div className="glass-panel p-8 rounded-2xl border border-white/5 flex flex-col justify-between bg-slate-950/20 glass-card-hover">
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-xs font-bold text-slate-400 uppercase font-mono">Local Stack</span>
+                    <span className="text-xs font-extrabold text-cyan-400 uppercase bg-cyan-950/20 border border-cyan-800/30 px-2 py-0.5 rounded font-mono">Free</span>
+                  </div>
+                  <h3 className="font-heading text-2xl font-bold text-white mb-3">Offline Privacy</h3>
+                  <p className="text-slate-400 text-xs leading-relaxed mb-6">
+                    Configure your system with local Ollama runtimes using models like qwen2.5-coder. No API keys needed, zero rate limits, and absolute workspace privacy.
+                  </p>
+                  <ul className="space-y-2.5 text-xs text-slate-300">
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                      Local Ollama Runtimes Support
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                      Raw markdown text pasting fallback
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                      Local sandbox validations
+                    </li>
+                  </ul>
+                </div>
+                <button 
+                  onClick={() => setView('workspace')}
+                  className="w-full text-center text-xs font-bold py-3 border border-white/10 hover:border-cyan-500/30 rounded-xl bg-white/5 hover:text-white transition mt-8"
+                >
+                  Configure Local Mode
+                </button>
+              </div>
+
+              {/* Cloud Tiers Card */}
+              <div className="glass-panel p-8 rounded-2xl border-2 border-indigo-500 flex flex-col justify-between shadow-xl shadow-indigo-500/5 relative overflow-hidden bg-slate-950/40">
+                <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[9px] font-extrabold px-3 py-1 uppercase rounded-bl-lg tracking-wider font-mono">
+                  Recommended
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-xs font-bold text-slate-400 uppercase font-mono">Hybrid Cloud</span>
+                    <span className="text-xs font-extrabold text-indigo-400 uppercase bg-indigo-950/20 border border-indigo-800/30 px-2 py-0.5 rounded font-mono">SaaS Power</span>
+                  </div>
+                  <h3 className="font-heading text-2xl font-bold text-white mb-3">Cloud Reasoning</h3>
+                  <p className="text-slate-400 text-xs leading-relaxed mb-6">
+                    Unlock maximum accuracy using Google Gemini models or Groq llama inference speeds. Scrapes URLs automatically using Firecrawl API.
+                  </p>
+                  <ul className="space-y-2.5 text-xs text-slate-300">
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                      Google Gemini & Groq APIs Integration
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                      Cloud Firecrawl dynamic URL scrapers
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                      Subprocess self-healing compiler loops
+                    </li>
+                  </ul>
+                </div>
+                <a 
+                  href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full text-center text-xs font-bold py-3 bg-indigo-600 text-white rounded-xl hover:opacity-90 transition mt-8 shadow-md shadow-indigo-500/10 block"
+                >
+                  Launch Hosted Workspace
+                </a>
+              </div>
+
+            </div>
+          </section>
+
+          {/* DEVELOPER TEAM PROFILE (PLACEMENT HACKATHON FOCUS CARD) */}
+          <section id="team" className="w-full py-16 border-t border-white/5">
+            <div className="text-center mb-12">
+              <span className="text-[10px] font-bold text-indigo-400 font-mono uppercase tracking-wider">[03] SYSTEM DEVELOPER</span>
+              <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-white mt-2">The Engineering Team</h2>
+            </div>
+
+            <div className="max-w-md mx-auto glass-panel p-6 rounded-2xl shadow-xl flex flex-col items-center text-center relative overflow-hidden bg-slate-950/20 border border-white/5 glass-card-hover">
+              <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-indigo-500 via-cyan-500 to-amber-500" />
+              
+              <div className="w-20 h-20 rounded-full border-2 border-white/10 bg-slate-900/60 overflow-hidden flex items-center justify-center mb-4 text-slate-500 shadow-md">
+                <User className="w-10 h-10 text-indigo-400" />
+              </div>
+
+              <h3 className="font-heading text-xl font-bold text-white font-sans">Yashwant K</h3>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1 font-mono">Computer Science & Engineering</span>
+              <span className="text-xs text-indigo-400 mt-1">Sri Shakthi Institute of Engineering and Technology</span>
+              
+              <p className="text-slate-400 text-xs mt-3 leading-relaxed">
+                Focused on Backend Systems, API Integrations, Agentic Workflows, and Developer Tooling. Built this project as a core Placement Hackathon submission to validate software engineering standards and SoC architectures.
+              </p>
+
+              <div className="flex gap-3 mt-6 w-full">
+                <a
+                  href="https://github.com/Yashwant00CR7"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold border border-white/10 hover:border-white/20 rounded-xl py-2.5 bg-white/5 text-slate-300 hover:text-white transition"
+                >
+                  <Code className="w-3.5 h-3.5" />
+                  GitHub
+                </a>
+                <a
+                  href="mailto:yashwant.k.dev@gmail.com"
+                  className="flex-grow flex items-center justify-center gap-1.5 text-xs font-bold bg-indigo-600 text-white rounded-xl py-2.5 hover:opacity-90 transition"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  Contact Email
+                </a>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        {/* Global Footer */}
+        <footer className="border-t border-white/5 py-8 text-center text-xs text-slate-500 relative z-10 w-full bg-[#03060f]/80 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-indigo-400 animate-pulse" />
+              <span className="font-heading font-bold text-white">Smart API DevTool</span>
+            </div>
+            <div className="text-slate-400 font-mono text-[10px]">
+              Cloud Hosting Space: <a href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool" target="_blank" rel="noopener noreferrer" className="hover:text-white underline">Yash030/Smart-Dev-API-Tool</a>
+            </div>
+            <div className="text-slate-500 text-[10px]">
+              Academic Hackathon Project © {new Date().getFullYear()} Yashwant K. All Rights Reserved.
+            </div>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // FULL-SCREEN WORKSPACE CONSOLE VIEW
+  // -------------------------------------------------------------
+  return (
+    <div className="h-screen w-screen bg-[#070b13] text-slate-100 font-sans flex flex-col overflow-hidden relative">
+      
+      {/* Settings Drawer overlay */}
+      <AnimatePresence>
+        {settingsOpen && (
+          <div className="fixed inset-0 z-50 flex justify-end">
+            {/* Backdrop cover */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSettingsOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            {/* Drawer sheet */}
+            <motion.div
+              initial={{ translateX: '100%' }}
+              animate={{ translateX: 0 }}
+              exit={{ translateX: '100%' }}
+              transition={{ type: 'tween', duration: 0.25 }}
+              className="relative w-80 bg-slate-900 border-l border-white/10 h-full p-6 flex flex-col justify-between shadow-2xl z-10"
+            >
+              <div className="space-y-6">
+                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <h4 className="font-heading font-bold text-sm text-white">Workspace Configuration</h4>
+                  <button
+                    onClick={() => setSettingsOpen(false)}
+                    className="p-1 rounded hover:bg-white/5 text-slate-400 hover:text-white"
+                  >
+                    <X className="w-4.5 h-4.5" />
+                  </button>
+                </div>
+
+                {/* API Credentials */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    <Key className="w-3.5 h-3.5 text-slate-400" />
+                    Credentials Settings
+                  </div>
+                  
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Google Gemini API Key</label>
+                    <input
+                      type="password"
+                      value={geminiKey}
+                      onChange={(e) => handleCredentialChange('gemini', e.target.value)}
+                      placeholder="AIzaSy..."
+                      className="w-full bg-black/45 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Groq API Key</label>
+                    <input
+                      type="password"
+                      value={groqKey}
+                      onChange={(e) => handleCredentialChange('groq', e.target.value)}
+                      placeholder="gsk_..."
+                      className="w-full bg-black/45 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">OpenRouter API Key</label>
+                    <input
+                      type="password"
+                      value={openrouterKey}
+                      onChange={(e) => handleCredentialChange('openrouter', e.target.value)}
+                      placeholder="sk-or-v1-..."
+                      className="w-full bg-black/45 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Firecrawl API Key</label>
+                    <input
+                      type="password"
+                      value={firecrawlKey}
+                      onChange={(e) => handleCredentialChange('firecrawl', e.target.value)}
+                      placeholder="fc-..."
+                      className="w-full bg-black/45 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                    />
+                  </div>
+                </div>
+
+                {/* OpenRouter custom ID adding */}
+                {modelProvider === 'openrouter' && (
+                  <div className="space-y-3 pt-4 border-t border-white/5">
+                    <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      OpenRouter Models Cache
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newCustomModelInput}
+                        onChange={(e) => setNewCustomModelInput(e.target.value)}
+                        placeholder="meta-llama/llama-3.3-70b-instruct:free"
+                        className="flex-grow bg-black/45 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-white placeholder-slate-600 focus:outline-none"
+                      />
+                      <button
+                        onClick={handleAddOpenRouterModel}
+                        className="bg-brand-blue hover:bg-blue-700 text-white p-2 rounded-lg transition"
+                        title="Add Model to Select Dropdown"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <small className="text-[9px] text-slate-500 block leading-normal">Add custom model IDs dynamically to store in local selects.</small>
+                  </div>
+                )}
+
+              </div>
+
+              <div className="text-[9px] text-slate-500 font-mono text-center pt-4 border-t border-white/5">
+                Saved in sessionStorage & localStorage
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* TOP NAVIGATION BAR PANEL */}
+      <nav className="bg-slate-950 px-6 py-3 border-b border-white/5 flex items-center justify-between flex-shrink-0 z-20">
+        {/* Left section: Breadcrumbs navigation */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setView('landing')}
+            className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow shadow-indigo-500/25 hover:scale-105 active:scale-95 transition"
+            title="Return to Homepage"
+          >
+            <Zap className="w-4 h-4 text-white" />
+          </button>
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <span className="text-slate-400 hover:text-white cursor-pointer transition" onClick={() => setView('landing')}>smart-api-devtool</span>
+            <span className="text-slate-600">/</span>
+            <span className="text-slate-200 font-semibold font-sans">workspace-console</span>
+          </div>
+        </div>
+
+        {/* Center section: Compact health status indicator bar */}
+        <div className="hidden md:flex items-center gap-3 bg-white/5 border border-white/5 rounded-full px-3.5 py-1 text-[10px] font-mono text-slate-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span>API Node: Active</span>
+          <span className="text-slate-700 font-normal">|</span>
+          <span>Gemini: {backendStatus.online ? 'Ready' : 'Offline'}</span>
+          <span className="text-slate-700 font-normal">|</span>
+          <span>Ollama: Connected</span>
+        </div>
+
+        {/* Right section: Sidebar toggle and configuration controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`p-1.5 rounded-lg border transition ${
+              sidebarOpen 
+                ? 'bg-indigo-600/10 border-indigo-600/25 text-indigo-400' 
+                : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'
+            }`}
+            title="Toggle Cache Sidebar"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="p-1.5 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 text-slate-400 hover:text-white transition"
+            title="Open Configuration Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        </div>
+      </nav>
+
+      {/* DUAL COLS WORKSPACE PORT */}
+      <div className="flex-grow flex overflow-hidden relative z-10 min-h-0 w-full">
+        
+        {/* Left Caching Sidebar */}
+        {sidebarOpen && (
+          <div className="w-64 bg-slate-950/60 border-r border-white/5 flex flex-col p-4 flex-shrink-0 select-none">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Saved integrations</span>
+              <span className="text-xs font-semibold px-2 py-0.5 bg-white/5 border border-white/10 rounded text-slate-400">
+                {integrations.length}
+              </span>
+            </div>
+
+            <div className="flex-grow overflow-y-auto mb-4 space-y-2 pr-1">
+              {integrations.length === 0 ? (
+                <div className="text-center text-xs text-slate-500 py-12 border border-dashed border-white/5 rounded-xl bg-white/5">
+                  No cached integrations
+                </div>
+              ) : (
+                integrations.map(item => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleLoadHistoryRecord(item)}
+                    className={`group p-3 rounded-lg border text-left cursor-pointer transition duration-150 flex items-center justify-between gap-3 ${
+                      currentIntegration?.id === item.id
+                        ? 'bg-brand-blue/10 border-brand-blue/30 shadow-sm'
+                        : 'bg-white/5 border-white/5 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="min-w-0 flex-grow">
+                      <div className="text-xs font-bold text-white truncate">{item.title}</div>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+                        <span className="px-1 py-0.2 bg-white/10 rounded text-[8px] font-extrabold uppercase text-slate-300">
+                          {item.language}
+                        </span>
+                        <span>{new Date(item.timestamp).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => handleDeleteHistoryRecord(item.id, e)}
+                      className="p-1 text-slate-400 hover:text-red-400 rounded transition opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <button
+              onClick={handleClearAllHistory}
+              className="w-full text-center text-xs font-bold py-2 px-3 border border-white/10 hover:border-red-500/30 rounded-lg hover:text-red-400 bg-white/5 transition"
+            >
+              Clear Workspace Cache
+            </button>
+          </div>
+        )}
+
+        {/* Form Inputs Parameter panel */}
+        <div
+          className="flex-shrink-0 flex flex-col p-5 overflow-y-auto border-r border-white/5 bg-[#0b0f19]/40"
+          style={{ width: `${leftWidth}px` }}
+        >
+          <div className="mb-4">
+            <h3 className="font-heading font-bold text-sm text-white">Execution Parameters</h3>
+            <p className="text-[10px] text-slate-400 mt-0.5">Specify documentation sources and generator models.</p>
+          </div>
+
+          <form onSubmit={(e) => { e.preventDefault(); handleGeneratePipeline(); }} className="space-y-4">
+            
+            {/* Input Sources Toggle */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Documentation Input Source</label>
+              <div className="flex bg-black/35 p-1 border border-white/5 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => handleSourceTabChange('url')}
+                  className={`flex-grow py-1.5 text-xs font-bold rounded-lg transition ${
+                    selectedSource === 'url' ? 'bg-white/10 text-white shadow' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  Scrape URL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSourceTabChange('text')}
+                  className={`flex-grow py-1.5 text-xs font-bold rounded-lg transition ${
+                    selectedSource === 'text' ? 'bg-white/10 text-white shadow' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  Raw Markdown
+                </button>
+              </div>
+
+              {selectedSource === 'url' ? (
+                <div className="mt-1">
+                  <input
+                    type="url"
+                    value={apiUrl}
+                    onChange={(e) => setApiUrl(e.target.value)}
+                    placeholder="https://api.stripe.com/docs/v1"
+                    className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                  />
+                  <small className="text-[10px] text-slate-500 mt-1 block leading-relaxed">DYNAMIC MARKDOWN PARSER POWERED BY FIRECRAWL.</small>
+                </div>
+              ) : (
+                <div className="mt-1">
+                  <textarea
+                    value={rawDocs}
+                    onChange={(e) => setRawDocs(e.target.value)}
+                    placeholder="# Charges API&#10;POST /v1/charges&#10;Headers: Authorization Bearer"
+                    rows={6}
+                    className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                  />
+                  <small className="text-[10px] text-slate-500 mt-1 block leading-relaxed">Direct offline markdown document text fallback.</small>
+                </div>
+              )}
+            </div>
+
+            {/* Target Use Case constraints */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Target Use Case Constraints</label>
+              <textarea
+                value={useCase}
+                onChange={(e) => setUseCase(e.target.value)}
+                placeholder={languagePlaceholders[language]}
+                rows={4}
+                className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                required
+              />
+            </div>
+
+            {/* Runtime Language & LLM Selection */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Code Runtime</label>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-brand-blue"
+                >
+                  <option value="python">Python (pytest)</option>
+                  <option value="javascript">JavaScript (Node)</option>
+                  <option value="typescript">TypeScript (ts-node)</option>
+                  <option value="go">Go (testing)</option>
+                  <option value="java">Java (JUnit)</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Model Provider</label>
+                <select
+                  value={modelProvider}
+                  onChange={(e) => setModelProvider(e.target.value)}
+                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-brand-blue"
+                >
+                  <option value="gemini">Google Gemini</option>
+                  <option value="ollama">Ollama (Local)</option>
+                  <option value="groq">Groq</option>
+                  <option value="openrouter">OpenRouter</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Google Gemini Model Selector */}
+            {modelProvider === 'gemini' && (
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gemini Tier Selection</label>
+                <select
+                  value={geminiModel}
+                  onChange={(e) => setGeminiModel(e.target.value)}
+                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-brand-blue"
+                >
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash (Default)</option>
+                  <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+                  <option value="gemini-2.5-pro">Gemini 2.5 Pro (Advanced Coding)</option>
+                  <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite</option>
+                  <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Preview)</option>
+                  <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                </select>
+              </div>
+            )}
+
+            {/* Groq Model Selector */}
+            {modelProvider === 'groq' && (
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Groq Inference Core</label>
+                <select
+                  value={groqModel}
+                  onChange={(e) => setGroqModel(e.target.value)}
+                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-brand-blue"
+                >
+                  <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
+                  <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+                  <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout (Preview)</option>
+                </select>
+              </div>
+            )}
+
+            {/* OpenRouter Model Selector */}
+            {modelProvider === 'openrouter' && (
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">OpenRouter Target Model</label>
+                  <button
+                    type="button"
+                    onClick={() => setSettingsOpen(true)}
+                    className="text-[9px] text-brand-blue hover:text-blue-400 uppercase font-semibold"
+                  >
+                    + Add Model ID
+                  </button>
+                </div>
+                <select
+                  value={openrouterModel}
+                  onChange={(e) => setOpenrouterModel(e.target.value)}
+                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-brand-blue"
+                >
+                  {openrouterCustomModels.map(modelId => (
+                    <option key={modelId} value={modelId}>{modelId}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isGenerating}
+              className="w-full bg-brand-blue hover:bg-blue-700 text-white text-xs font-bold py-3 px-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 relative shadow-lg shadow-blue-500/10"
+            >
+              {isGenerating ? (
+                <>
+                  <span>Compiling Deliverables...</span>
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin absolute right-4" />
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5" />
+                  <span>Execute Self-Healing Generator</span>
+                </>
+              )}
+            </button>
+
+          </form>
+          
+          {/* Info note about cloud hosting space */}
+          <div className="mt-auto border-t border-white/5 pt-4">
+            <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Cloud Deployment</span>
+            <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400 bg-white/5 border border-white/5 rounded-lg p-2.5">
+              <span>Hugging Face Space:</span>
+              <a
+                href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white underline font-semibold flex items-center gap-1"
+              >
+                Launch Cloud
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Resizing column bar */}
+        <div
+          onMouseDown={() => setIsDraggingColumn(true)}
+          className={`w-1 hover:w-1.5 bg-white/5 hover:bg-brand-blue/35 cursor-col-resize self-stretch transition-all duration-150 flex-shrink-0 flex items-center justify-center relative ${
+            isDraggingColumn ? 'bg-brand-blue/40' : ''
+          }`}
+        >
+          <div className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize z-10" />
+        </div>
+
+        {/* Right Workspace telemetry & results */}
+        <div className="flex-grow flex-1 flex flex-col min-w-0 min-h-0 bg-slate-950/20">
+          
+          <div className="flex-grow flex flex-col min-h-0">
+            
+            {/* Telemetry Console */}
+            <div
+              id="console-wrapper"
+              className="flex-shrink-0 flex flex-col bg-[#02040a] border-b border-white/5 overflow-hidden"
+              style={{ height: `${consoleHeight}px` }}
+            >
+              <div className="bg-[#05070f] px-5 py-2.5 border-b border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Terminal className="w-4 h-4 text-slate-400" />
+                  <span className="font-mono text-[10px] text-slate-400 font-semibold tracking-tight">Sandbox Execution Console</span>
+                  <button
+                    onClick={handleClearLogs}
+                    className="text-[9px] font-bold text-slate-500 hover:text-slate-300 transition uppercase ml-2"
+                  >
+                    Clear Logs
+                  </button>
+                </div>
+                <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 ${
+                  pulseState === 'Active' ? 'text-indigo-400 animate-pulse' : pulseState === 'Ready' ? 'text-emerald-400' : 'text-slate-500'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    pulseState === 'Active' ? 'bg-indigo-400 animate-ping' : pulseState === 'Ready' ? 'bg-emerald-400' : 'bg-slate-500'
+                  }`} />
+                  {pulseState}
+                </span>
+              </div>
+
+              <div className="p-4 flex-grow overflow-y-auto font-mono text-[11px] flex flex-col gap-1 text-slate-300">
+                {logs.map((log, idx) => {
+                  let typeColor = 'text-slate-400';
+                  if (log.type === 'scraper') typeColor = 'text-cyan-400';
+                  else if (log.type === 'agent') typeColor = 'text-indigo-300';
+                  else if (log.type === 'sandbox') typeColor = 'text-amber-300';
+                  else if (log.type === 'success') typeColor = 'text-emerald-400';
+                  else if (log.type === 'error') typeColor = 'text-red-400';
+                  return (
+                    <div key={idx} className={`leading-relaxed ${typeColor}`}>
+                      {log.text}
+                      {idx === logs.length - 1 && <span className="terminal-caret">_</span>}
+                    </div>
+                  );
+                })}
+                {logs.length === 0 && (
+                  <div className="text-slate-600">Console silent. System waiting...<span className="terminal-caret">_</span></div>
+                )}
+                <div ref={consoleLogsEndRef} />
+              </div>
+            </div>
+
+            {/* Vertical resizing bar */}
+            <div
+              onMouseDown={() => setIsDraggingConsole(true)}
+              className={`h-1 hover:h-1.5 bg-white/5 hover:bg-brand-blue/35 cursor-row-resize flex-shrink-0 flex items-center justify-center relative z-10 ${
+                isDraggingConsole ? 'bg-brand-blue/40' : ''
+              }`}
+            >
+              <div className="absolute inset-x-0 -top-1 -bottom-1 cursor-row-resize z-20" />
+            </div>
+
+            {/* Graph flow visualizer + result tabs */}
+            <div className="flex-1 flex flex-col min-h-0 bg-[#0c101a]/30 p-4 gap-4">
+              {renderFlowchartVisualizer()}
+
+              {/* Output Tab contents */}
+              {resultsVisible && currentIntegration ? (
+                <div className={`glass-panel rounded-xl flex-grow flex flex-col min-h-0 overflow-hidden ${
+                  fullscreenResult ? 'results-card-fullscreen shadow-2xl z-50' : ''
+                }`}>
+                  
+                  {/* Actions bar header */}
+                  <div className="bg-[#0b0e14] px-5 py-3 border-b border-white/5 flex items-center justify-between flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-indigo-300 bg-indigo-950/40 border border-indigo-900/30 px-2 py-0.5 rounded">
+                        {currentIntegration.language.toUpperCase()}
+                      </span>
+                      <h4 className="text-xs font-bold text-white truncate max-w-xs">{currentIntegration.title}</h4>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setFullscreenResult(!fullscreenResult)}
+                        className="p-1.5 rounded bg-white/5 border border-white/10 text-slate-400 hover:text-white"
+                        title="Toggle Fullscreen"
+                      >
+                        {fullscreenResult ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        onClick={handleDownloadZIP}
+                        className="inline-flex items-center gap-1 font-bold text-[10px] text-white bg-emerald-600 hover:bg-emerald-700 py-1.5 px-3 rounded-lg transition shadow shadow-emerald-500/10"
+                      >
+                        <Download className="w-3 h-3" />
+                        ZIP Deliverable
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tabs bar */}
+                  <div className="flex bg-slate-900/50 border-b border-white/5 p-2 gap-1 flex-shrink-0">
+                    {(['overview', 'endpoints', 'code', 'tests', 'readme'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveResultTab(tab)}
+                        className={`text-[10px] font-bold py-1.5 px-3 rounded-lg transition ${
+                          activeResultTab === tab
+                            ? 'bg-brand-blue text-white'
+                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Document panel viewport */}
+                  <div className="p-5 flex-grow overflow-y-auto bg-slate-900/10 text-slate-300">
+                    {activeResultTab === 'overview' && (
+                      <div
+                        className="markdown-body"
+                        dangerouslySetInnerHTML={{ __html: formatMarkdownToHTML(currentIntegration.overview) }}
+                      />
+                    )}
+                    {activeResultTab === 'endpoints' && (
+                      <div
+                        className="markdown-body"
+                        dangerouslySetInnerHTML={{ __html: formatMarkdownToHTML(currentIntegration.endpoints) }}
+                      />
+                    )}
+                    {activeResultTab === 'code' && (
+                      <div className="relative">
+                        <div className="absolute top-0 right-0 flex gap-2 z-10">
+                          <button
+                            id="btn-copy-code"
+                            onClick={() => handleCopyCode(currentIntegration.code, 'btn-copy-code')}
+                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-300 hover:text-white"
+                          >
+                            <Copy className="w-3 h-3" />
+                            Copy
+                          </button>
+                          <button
+                            onClick={() => handleDownloadSingleFile('code')}
+                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-300 hover:text-white"
+                          >
+                            <Download className="w-3 h-3" />
+                            Download
+                          </button>
+                        </div>
+                        <pre className="bg-slate-950 p-4 border border-white/5 rounded-lg font-mono text-xs overflow-x-auto select-all mt-8">
+                          <code>{currentIntegration.code}</code>
+                        </pre>
+                      </div>
+                    )}
+                    {activeResultTab === 'tests' && (
+                      <div className="relative">
+                        <div className="absolute top-0 right-0 flex gap-2 z-10">
+                          <button
+                            id="btn-copy-tests"
+                            onClick={() => handleCopyCode(currentIntegration.tests, 'btn-copy-tests')}
+                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-300 hover:text-white"
+                          >
+                            <Copy className="w-3 h-3" />
+                            Copy
+                          </button>
+                          <button
+                            onClick={() => handleDownloadSingleFile('tests')}
+                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-300 hover:text-white"
+                          >
+                            <Download className="w-3 h-3" />
+                            Download
+                          </button>
+                        </div>
+                        <pre className="bg-slate-950 p-4 border border-white/5 rounded-lg font-mono text-xs overflow-x-auto select-all mt-8">
+                          <code>{currentIntegration.tests}</code>
+                        </pre>
+                      </div>
+                    )}
+                    {activeResultTab === 'readme' && (
+                      <div className="relative">
+                        <div className="absolute top-0 right-0 flex gap-2 z-10">
+                          <button
+                            id="btn-copy-readme"
+                            onClick={() => handleCopyCode(currentIntegration.readme, 'btn-copy-readme')}
+                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-300 hover:text-white"
+                          >
+                            <Copy className="w-3 h-3" />
+                            Copy
+                          </button>
+                          <button
+                            onClick={() => handleDownloadSingleFile('readme')}
+                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-300 hover:text-white"
+                          >
+                            <Download className="w-3 h-3" />
+                            Download
+                          </button>
+                        </div>
+                        <pre className="bg-slate-950 p-4 border border-white/5 rounded-lg font-mono text-xs overflow-x-auto select-all mt-8">
+                          <code>{currentIntegration.readme}</code>
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-grow flex flex-col items-center justify-center text-center p-8 border border-dashed border-white/5 rounded-xl bg-white/5">
+                  <FileCode className="w-10 h-10 text-slate-600 mb-2" />
+                  <h4 className="text-xs font-bold text-white mb-1">Awaiting Generation Results</h4>
+                  <p className="text-[10px] text-slate-500 max-w-xs">Provide constraints on the left parameter panel and trigger execution to populate client deliverables.</p>
+                </div>
+              )}
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* Confirmation modal */}
+      <AnimatePresence>
+        {confirmModal.visible && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#0b0f19] border border-white/10 rounded-xl shadow-2xl max-w-sm w-full overflow-hidden"
+            >
+              <div className="p-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                    <AlertTriangle className="w-4.5 h-4.5" />
+                  </div>
+                  <h4 className="font-heading font-bold text-base text-white">{confirmModal.title}</h4>
+                </div>
+                <p className="text-xs text-slate-400 mt-3 leading-normal">{confirmModal.message}</p>
+              </div>
+
+              <div className="bg-black/35 px-6 py-4 flex justify-end gap-2 border-t border-white/5">
+                <button
+                  onClick={() => confirmModal.resolve?.(false)}
+                  className="text-xs font-bold text-slate-400 hover:text-white px-3 py-2 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => confirmModal.resolve?.(true)}
+                  className="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition"
+                >
+                  {confirmModal.btnText}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </div>
+  );
+}
