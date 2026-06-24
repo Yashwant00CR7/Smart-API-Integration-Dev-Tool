@@ -153,6 +153,9 @@ CORE REQUIREMENTS:
    - Include robust error handling and throw custom descriptive exceptions.
    - Implement exponential backoff retry logic for transient errors (e.g., HTTP 429, 5xx) that honors user-configured retry/timeout parameters.
    - NOT contain any placeholders, mock code, or incomplete implementations.
+   - Strictly utilize only the paths, HTTP methods, parameters, and payload schemas defined in the provided API Reference Documentation. DO NOT invent, guess, or hallucinate fictional endpoints.
+   - Never hardcode API keys or credentials. Retrieve keys dynamically (e.g., using environment variables or configuration files).
+   - Integrate production-grade logging using the target language's standard library logging utilities to record requests, retries, and errors, rather than bare print statements.
 4. 'tests': Write a complete, executable unit test suite script to validate the wrapper class. The tests must:
    - Compile and run successfully in the target language environment.
    - Use mock servers or standard library mock utilities rather than calling the real API.
@@ -188,7 +191,8 @@ INSTRUCTIONS:
 1. Correct the wrapper code ('code') or the test suite ('tests') or both to resolve the error.
 2. Ensure that standard library mocks are correctly imported and used.
 3. If the error shows missing package imports or runtime path issues, ensure imports are aligned with standard local directory layouts.
-4. Output the complete updated fields: 'overview', 'endpoints', 'code', 'tests', and 'readme'.
+4. Ensure the wrapper strictly adheres to the provided API Reference Documentation, handles credentials securely without hardcoding, and uses standard logging libraries.
+5. Output the complete updated fields: 'overview', 'endpoints', 'code', 'tests', and 'readme'.
 """
 
     if model_provider == "gemini":
