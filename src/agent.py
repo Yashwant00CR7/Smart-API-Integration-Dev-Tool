@@ -98,11 +98,13 @@ Requirements:
    - Handle connection timeouts, session reuse, and authorization headers.
    - Include robust error handling and throw custom descriptive exceptions.
    - Implement exponential backoff retry logic for HTTP rate limits (429) or transient server errors (5xx).
+     * Python-specific rule: DO NOT use class-level static decorators (e.g., `@retry`) on instance methods when the retry limit or timeout is configuration-dependent. Instead, instantiate the retrier dynamically inside the request method (e.g. using `tenacity.Retrying` and executing the request within it) so it respects instance-level attributes like `self.max_retries` and `self.timeout`.
    - NOT contain any placeholders, mock code, or incomplete implementations.
 4. 'tests': Write a complete, executable unit test suite script to validate the wrapper class. Crucially:
    - The tests must compile and run successfully via the native language environment.
    - Use mock servers or standard library mock utilities (e.g., standard Python 'unittest.mock' package) rather than calling the real API.
    - Python: Use pytest/unittest style. Must import the client wrapper from 'client' module (e.g., `from client import MyAPIClient`).
+     * Mock safety rule: Ensure mock `side_effect` lists contain enough mock responses to match the maximum number of attempts (e.g., `max_retries + 1`) to prevent mock iterator exhaustion and StopIteration errors.
    - JavaScript: Use standard built-in assert module and node.js, importing from `./client`.
    - TypeScript: Use ts-node execution, importing client from `./client`.
    - Go: Use native 'testing' library, importing the sandbox package.
@@ -141,7 +143,7 @@ Instructions:
             
         client = genai.Client(api_key=gemini_key)
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

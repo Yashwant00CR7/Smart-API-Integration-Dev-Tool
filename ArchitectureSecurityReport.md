@@ -20,6 +20,11 @@ This report provides a formal evaluation of the Model Context Protocol (MCP) ser
 - **Unified Development Base**: Standardized the execution environment by bundling Python 3.11, NodeJS 18, Golang, and Java JDK in a single Debian-based Docker image. This guarantees that the sandbox executor (`src/services/executor.py`) can invoke language compilers natively without host system dependency drift.
 - **Baking Compilers for Offline Performance**: Pre-installed `typescript` and `ts-node` globally via `npm` inside the image. This avoids high-latency npm registry pulls and potential network timeouts during test executions in container sandboxes.
 
+### Dynamic Runtime Retry Isolation & Mock Safety (Self-Healing Loop Guard)
+- **The Load-Time Decorator Trap**: Static method decorators (like tenacity's `@retry`) are evaluated at module load-time, causing them to hardcode retry configurations from class-level constants and completely bypass constructor-level overrides (such as `self.max_retries`).
+- **Mock-Exhaustion Protections**: When unit testing suites patch HTTP requests, they provide a strict number of responses matching expected retry limits via mock `side_effect` lists. If a static decorator overrides these limits, it triggers extra requests, exhausting the mock iterator and crashing tests with a `StopIteration` error.
+- **Dynamic Context Wrappers**: Our architecture enforces instantiating retry controllers dynamically inside instance methods at runtime. This maintains clean OOP encapsulation, respects user-configured retry limits, and prevents testing framework failures from mock depletion.
+
 ---
 
 ## 2. Security Assessment & Hardening
