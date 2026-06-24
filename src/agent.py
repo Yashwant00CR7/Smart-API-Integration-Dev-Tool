@@ -23,6 +23,8 @@ class AgentState(TypedDict):
     gemini_model: Optional[str]
     groq_key: Optional[str]
     groq_model: Optional[str]
+    openrouter_key: Optional[str]
+    openrouter_model: Optional[str]
     firecrawl_key: Optional[str]
     retry_count: int
     error_logs: str
@@ -40,6 +42,11 @@ class APIIntegrationOutput(BaseModel):
     code: str = Field(..., description="The complete, production-ready, type-safe API client wrapper class.")
     tests: str = Field(..., description="The unit tests code suite designed to test the client wrapper class.")
     readme: str = Field(..., description="Markdown usage instructions and setup guide for the wrapper.")
+
+# Output model for pre-generation validation
+class APIValidationOutput(BaseModel):
+    has_rest_apis: bool = Field(..., description="True if the text contains actual REST API endpoints, HTTP routes, paths, or API specifications. False if it is just a landing page, marketing text, generic tutorials, or contains no endpoints.")
+    explanation: str = Field(..., description="A brief explanation of why the document does or does not contain REST APIs or specifications.")
 
 def parse_json_response(response_text: str, provider: str = "model") -> Dict[str, Any]:
     """
@@ -82,6 +89,163 @@ def parse_json_response(response_text: str, provider: str = "model") -> Dict[str
     error_msg += f" Raw response:\n{response_text}"
     raise ValueError(error_msg)
 
+def validate_documentation(
+    scraped_text: str,
+    model_provider: str,
+    gemini_key: Optional[str] = None,
+    gemini_model: Optional[str] = None,
+    groq_key: Optional[str] = None,
+    groq_model: Optional[str] = None,
+    openrouter_key: Optional[str] = None,
+    openrouter_model: Optional[str] = None
+):
+    """
+    Validates that the scraped text contains actual REST API specifications or endpoints.
+    If not, raises a ValueError with an explanation.
+    """
+    sample_text = scraped_text[:15000].strip()
+    if not sample_text:
+        raise ValueError("Documentation content is empty. Please provide valid API reference content.")
+
+    validation_prompt = f"""You are a senior API architect. Analyze the following scraped text from a documentation source and determine if it contains actual REST API endpoint specifications (such as HTTP methods: GET, POST, PUT, DELETE, etc., endpoint paths/routes, request headers, parameters, or JSON payload structures).
+
+If the text contains actual REST API endpoint specifications or routes, set "has_rest_apis" to true.
+If the text is just a high-level landing page, generic documentation, tutorials without endpoint paths, marketing text, or contains no actual REST API endpoints/routes, set "has_rest_apis" to false.
+
+DOCUMENTATION CONTENT:
+{sample_text}
+"""
+
+    has_rest_apis = True
+    explanation = ""
+
+    if model_provider == "gemini":
+        g_key = gemini_key or settings.gemini_api_key
+        g_model = gemini_model or "gemini-2.5-flash"
+        if not g_key:
+            raise ValueError("Google Gemini API Key is required but not provided. Please supply one in your configuration or UI.")
+        
+        client = genai.Client(api_key=g_key)
+        response = client.models.generate_content(
+            model=g_model,
+            contents=validation_prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=APIValidationOutput,
+                temperature=0.0,
+            ),
+        )
+        parsed = response.parsed
+        has_rest_apis = parsed.has_rest_apis
+        explanation = parsed.explanation
+
+    elif model_provider == "groq":
+        g_key = groq_key or settings.groq_api_key
+        g_model = groq_model or "llama-3.3-70b-versatile"
+        if not g_key:
+            raise ValueError("Groq API Key is required but not provided. Please supply one in your configuration or UI.")
+            
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {g_key}",
+            "Content-Type": "application/json"
+        }
+        
+        prompt_with_format = validation_prompt + "\n\nCRITICAL: Return ONLY a valid JSON object matching this schema:\n" + json.dumps({
+            "has_rest_apis": "boolean (True if the text contains actual REST API endpoints, HTTP routes, paths, or API specifications)",
+            "explanation": "string (Brief explanation of why)"
+        }, indent=2)
+        
+        payload = {
+            "model": g_model,
+            "messages": [
+                {"role": "user", "content": prompt_with_format}
+            ],
+            "temperature": 0.0,
+            "max_tokens": 1000,
+            "response_format": {"type": "json_object"}
+        }
+        
+        response = requests.post(url, json=payload, headers=headers, timeout=60)
+        response.raise_for_status()
+        result = response.json()
+        response_text = result["choices"][0]["message"]["content"]
+        
+        parsed = parse_json_response(response_text, f"Groq validation ({g_model})")
+        has_rest_apis = parsed.get("has_rest_apis", True)
+        explanation = parsed.get("explanation", "")
+
+    elif model_provider == "ollama":
+        prompt_with_format = validation_prompt + "\n\nCRITICAL: Return ONLY a valid JSON object matching this schema:\n" + json.dumps({
+            "has_rest_apis": "boolean (True if the text contains actual REST API endpoints, HTTP routes, paths, or API specifications)",
+            "explanation": "string (Brief explanation of why)"
+        }, indent=2)
+        
+        url = f"{settings.ollama_base_url.rstrip('/')}/api/generate"
+        payload = {
+            "model": "qwen2.5-coder",
+            "prompt": prompt_with_format,
+            "format": "json",
+            "stream": False,
+            "options": {
+                "temperature": 0.0,
+                "num_predict": 1000
+            }
+        }
+        
+        response = requests.post(url, json=payload, timeout=60)
+        response.raise_for_status()
+        result = response.json()
+        response_text = result.get("response", "")
+        
+        parsed = parse_json_response(response_text, "Ollama validation")
+        has_rest_apis = parsed.get("has_rest_apis", True)
+        explanation = parsed.get("explanation", "")
+
+    elif model_provider == "openrouter":
+        or_key = openrouter_key or settings.openrouter_api_key
+        or_model = openrouter_model or "openrouter/free"
+        if not or_key:
+            raise ValueError("OpenRouter API Key is required but not provided. Please supply one in your configuration or UI.")
+            
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {or_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/Yashwant00CR7/Smart-API-Integration-Dev-Tool",
+            "X-Title": "Smart API DevTool"
+        }
+        
+        prompt_with_format = validation_prompt + "\n\nCRITICAL: Return ONLY a valid JSON object matching this schema:\n" + json.dumps({
+            "has_rest_apis": "boolean (True if the text contains actual REST API endpoints, HTTP routes, paths, or API specifications)",
+            "explanation": "string (Brief explanation of why)"
+        }, indent=2)
+        
+        payload = {
+            "model": or_model,
+            "messages": [
+                {"role": "user", "content": prompt_with_format}
+            ],
+            "temperature": 0.0,
+            "max_tokens": 1000
+        }
+        
+        response = requests.post(url, json=payload, headers=headers, timeout=60)
+        response.raise_for_status()
+        result = response.json()
+        response_text = result["choices"][0]["message"]["content"]
+        
+        parsed = parse_json_response(response_text, f"OpenRouter validation ({or_model})")
+        has_rest_apis = parsed.get("has_rest_apis", True)
+        explanation = parsed.get("explanation", "")
+
+    if not has_rest_apis:
+        raise ValueError(
+            f"REST APIs or specifications were not found in the scraped content. "
+            f"Explanation: {explanation} "
+            f"Please provide a different URL or paste the raw REST API specifications directly."
+        )
+
 LANGUAGE_SPECS = {
     "python": {
         "framework": "pytest/unittest",
@@ -98,36 +262,49 @@ LANGUAGE_SPECS = {
     },
     "javascript": {
         "framework": "standard built-in assert module and node.js",
-        "import_instruction": "Import the client class from `./client` matching the exact export pattern you used in the client code (e.g., if you exported via `module.exports = GeminiClient;` then import via `const GeminiClient = require('./client');`).",
+        "import_instruction": "Import the client class from `./client` using a named import (e.g., `const { MyClientClass } = require('./client');`).",
         "rules": [
             "DO NOT use ES6 module import/export syntax. Use CommonJS require() and module.exports instead.",
             "DO NOT use the 'import' keyword or the 'import()' function anywhere in either the client or the test code.",
+            "In the client code, always export the client class as a named property of module.exports matching the class name (e.g. `module.exports = { MyClientClass };`). In the test code, always import using named destructuring: `const { MyClientClass } = require('./client');`.",
             "DO NOT require or import any third-party npm packages (such as node-fetch, loglevel, axios, lodash, etc.) in either the client or test script. Use only standard Node.js built-in modules (e.g. assert, fs, path).",
             "DO NOT use Node's built-in http or https modules to perform network requests. You MUST use the global fetch API (fetch() or globalThis.fetch()) directly. DO NOT require or import fetch; it is globally available in Node.js v18+.",
-            "DO NOT use global test functions or runners like describe(), it(), test(), before(), or after(). These are undefined in raw node executions. Instead, write tests as standard, sequentially executed functions or blocks using the built-in assert module, and manage the execution flow (e.g., catching errors and exiting with process.exit(1) on failure or process.exit(0) on success).",
+            "DO NOT use global test functions or runners like describe(), it(), test(), before(), or after(). Write the tests inside a single top-level async function execution harness `async function runTests() { ... } runTests();`. Wrap all assertions inside a single try/catch block. If any error or assertion fails, log the error and call `process.exit(1)`. If all tests pass, call `process.exit(0)`. Ensure every asynchronous client call is awaited inside this block.",
             "To mock HTTP responses, assign a mock function directly to globalThis.fetch inside the test script instead of using external mock packages."
         ]
     },
     "typescript": {
         "framework": "ts-node execution with standard assert",
-        "import_instruction": "Import the client class from `./client` matching the exact export pattern you used in the client code (e.g. if you did `export default GeminiClient;` or `export class GeminiClient` then import it accordingly).",
+        "import_instruction": "Import the client class from `./client` using named imports (e.g. `import { MyClientClass } from './client';`).",
         "rules": [
             "DO NOT use third-party test libraries (e.g. Jest, Mocha, Expect). Write tests as a self-contained TypeScript file using the built-in assert module.",
+            "In the client code, export the class using named export (e.g. `export class MyClientClass { ... }`). In the test code, import it accordingly (e.g. `import { MyClientClass } from './client';`).",
             "DO NOT import or require any third-party npm packages (such as node-fetch, loglevel, axios, etc.) in the client or test script.",
             "DO NOT use Node's built-in http or https modules to perform network requests. You MUST use the global fetch API (fetch() or globalThis.fetch()) directly. DO NOT import fetch; it is globally available in Node.js v18+.",
-            "DO NOT use global test runner functions like describe(), it(), test(), before(), or after(). Write tests as sequentially executed blocks/functions using the built-in assert module, managing exits with process.exit(1) on failure.",
+            "DO NOT use global test runner functions like describe(), it(), test(), before(), or after(). Write tests inside a single top-level `async function runTests() { ... } runTests();` harness using the built-in assert module, catching errors and exiting with `process.exit(1)` on failure, and exiting with `process.exit(0)` on success. Ensure all asynchronous calls are awaited.",
             "To mock HTTP responses, assign a mock function directly to globalThis.fetch inside the test script."
         ]
     },
     "go": {
         "framework": "native 'testing' package",
         "import_instruction": "Import the sandbox package.",
-        "rules": []
+        "rules": [
+            "DO NOT use third-party HTTP mocking libraries (e.g. jarcoal/httpmock). Mock HTTP requests using standard library httptest.NewServer or by injecting a custom http.RoundTripper.",
+            "Reuse TCP connections by reusing the http.Client instance.",
+            "Write standard Go unit tests matching the signature func TestXxx(t *testing.T) from the 'testing' package.",
+            "Implement exponential backoff retry logic for rate limits (429) and server errors (5xx) dynamically using time.Sleep."
+        ]
     },
     "java": {
-        "framework": "Standard public Java class (matching the filename, e.g. TestClient) with a public static void main(String[] args) method that executes assertions using the standard `assert` keyword. Do not use JUnit or third-party libraries.",
+        "framework": "Standard public Java class with public static void main(String[] args)",
         "import_instruction": "Import the client class directly.",
-        "rules": []
+        "rules": [
+            "DO NOT use JUnit, TestNG, or third-party assertion libraries (e.g. AssertJ, Hamcrest). All assertions MUST use Java's native `assert` keyword.",
+            "The test file MUST be a single, standalone Java class with a `public static void main(String[] args)` method that executes all assertions sequentially. If any assertion fails, the program should crash, translating to a non-zero exit code in the sandbox.",
+            "DO NOT use third-party HTTP clients (e.g. OkHttp, Apache HttpClient). Use Java 11's built-in java.net.http.HttpClient or HttpURLConnection.",
+            "DO NOT use external mocking libraries (e.g. Mockito). Mock API responses by implementing a mock HTTP handler or a custom HttpClient request runner inside the test code.",
+            "Ensure that tests run successfully with assertions enabled via the -ea flag (configured in the executor environment)."
+        ]
     }
 }
 
@@ -144,6 +321,8 @@ def generate_code(state: AgentState) -> Dict[str, Any]:
     gemini_key = state.get("gemini_key") or settings.gemini_api_key
     groq_key = state.get("groq_key") or settings.groq_api_key
     groq_model = state.get("groq_model") or "llama-3.3-70b-versatile"
+    openrouter_key = state.get("openrouter_key") or settings.openrouter_api_key
+    openrouter_model = state.get("openrouter_model") or "openrouter/free"
     retry_count = state.get("retry_count", 0)
     error_logs = state.get("error_logs", "")
     
@@ -358,6 +537,58 @@ INSTRUCTIONS:
             "tests": parsed.get("tests", ""),
             "readme": parsed.get("readme", ""),
         }
+    elif model_provider == "openrouter":
+        if not openrouter_key:
+            raise ValueError("OpenRouter API Key is required but not provided. Please supply one in your configuration or .env file.")
+            
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {openrouter_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/Yashwant00CR7/Smart-API-Integration-Dev-Tool",
+            "X-Title": "Smart API DevTool"
+        }
+        
+        prompt_with_format = prompt + "\n\nCRITICAL: Return ONLY a valid JSON object matching this schema:\n" + json.dumps({
+            "overview": "string (Overview of auth methods, integration path recommendation)",
+            "endpoints": "string (List of endpoints, request payloads, headers, query parameters)",
+            "code": "string (The complete client wrapper code)",
+            "tests": "string (The complete unit test suite)",
+            "readme": "string (README markdown guide)"
+        }, indent=2)
+        
+        payload = {
+            "model": openrouter_model,
+            "messages": [
+                {"role": "user", "content": prompt_with_format}
+            ],
+            "temperature": 0.1,
+            "max_tokens": 4096
+        }
+        
+        response = requests.post(url, json=payload, headers=headers, timeout=120)
+        response.raise_for_status()
+        result = response.json()
+        
+        choice = result["choices"][0]
+        response_text = choice["message"]["content"]
+        finish_reason = choice.get("finish_reason")
+        
+        if finish_reason == "length":
+            raise ValueError(
+                f"OpenRouter ({openrouter_model}) generation was truncated (finish_reason: length). "
+                f"The model ran out of output tokens before completing the JSON wrapper. "
+                f"Try reducing the size of your input documentation or using a model with a larger output limit."
+            )
+            
+        parsed = parse_json_response(response_text, f"OpenRouter model ({openrouter_model})")
+        return {
+            "overview": parsed.get("overview", ""),
+            "endpoints": parsed.get("endpoints", ""),
+            "code": parsed.get("code", ""),
+            "tests": parsed.get("tests", ""),
+            "readme": parsed.get("readme", ""),
+        }
     else:
         raise ValueError(f"Unsupported model provider: {model_provider}")
 
@@ -421,11 +652,25 @@ def run_agent_workflow(
     gemini_model: Optional[str] = None,
     groq_key: Optional[str] = None,
     groq_model: Optional[str] = None,
+    openrouter_key: Optional[str] = None,
+    openrouter_model: Optional[str] = None,
     firecrawl_key: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Main entrypoint to trigger the self-healing agent loop.
     """
+    # Pre-generation validation
+    validate_documentation(
+        scraped_text=scraped_text,
+        model_provider=model_provider,
+        gemini_key=gemini_key,
+        gemini_model=gemini_model,
+        groq_key=groq_key,
+        groq_model=groq_model,
+        openrouter_key=openrouter_key,
+        openrouter_model=openrouter_model
+    )
+
     initial_state = {
         "scraped_text": scraped_text,
         "use_case": use_case,
@@ -435,6 +680,8 @@ def run_agent_workflow(
         "gemini_model": gemini_model,
         "groq_key": groq_key,
         "groq_model": groq_model,
+        "openrouter_key": openrouter_key,
+        "openrouter_model": openrouter_model,
         "firecrawl_key": firecrawl_key,
         "retry_count": 0,
         "error_logs": "",

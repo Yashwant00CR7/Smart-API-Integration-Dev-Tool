@@ -31,11 +31,13 @@ class AnalyzeRequest(BaseModel):
     raw_docs: Optional[str] = Field(None, description="Raw pasted API documentation text.")
     use_case: str = Field(..., description="Details on what the wrapper will do.")
     language: str = Field("python", description="Target programming language.")
-    model_provider: str = Field("gemini", description="Either 'gemini', 'ollama' or 'groq'.")
+    model_provider: str = Field("gemini", description="Either 'gemini', 'ollama', 'groq' or 'openrouter'.")
     gemini_key: Optional[str] = Field(None, description="Optional Google Gemini API Key.")
     gemini_model: Optional[str] = Field("gemini-2.5-flash", description="Optional Google Gemini Model ID.")
     groq_key: Optional[str] = Field(None, description="Optional Groq API Key.")
     groq_model: Optional[str] = Field(None, description="Optional Groq Model ID.")
+    openrouter_key: Optional[str] = Field(None, description="Optional OpenRouter API Key.")
+    openrouter_model: Optional[str] = Field("openrouter/free", description="Optional OpenRouter Model ID.")
     firecrawl_key: Optional[str] = Field(None, description="Optional Firecrawl API Key.")
 
 @app.get("/api/health")
@@ -46,6 +48,7 @@ def health_check():
         "configuration": {
             "has_gemini_key": bool(settings.gemini_api_key),
             "has_groq_key": bool(settings.groq_api_key),
+            "has_openrouter_key": bool(settings.openrouter_api_key),
             "has_firecrawl_key": bool(settings.firecrawl_api_key),
             "ollama_base_url": settings.ollama_base_url
         }
@@ -80,6 +83,8 @@ async def analyze_api(request: AnalyzeRequest):
             gemini_model=request.gemini_model,
             groq_key=request.groq_key,
             groq_model=request.groq_model,
+            openrouter_key=request.openrouter_key,
+            openrouter_model=request.openrouter_model,
             firecrawl_key=request.firecrawl_key
         )
         

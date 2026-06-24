@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     # API Keys & Third-party integrations
     gemini_api_key: Optional[str] = None
     groq_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
     firecrawl_api_key: Optional[str] = None
     ollama_base_url: str = "http://localhost:11434"
     
@@ -15,6 +16,7 @@ class Settings(BaseSettings):
     reload: bool = False
     access_log: bool = False
     gemini_model: str = "gemini-2.5-flash"
+    openrouter_model: str = "openrouter/free"
     
     # Environment config
     model_config = SettingsConfigDict(

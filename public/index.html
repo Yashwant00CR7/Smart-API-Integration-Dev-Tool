@@ -75,6 +75,10 @@
                         <span class="status-indicator gray"></span>
                         Groq API: <span class="status-label">Not Configured</span>
                     </div>
+                    <div class="status-item" id="status-openrouter">
+                        <span class="status-indicator gray"></span>
+                        OpenRouter: <span class="status-label">Not Configured</span>
+                    </div>
                 </div>
             </header>
 
@@ -133,6 +137,7 @@
                                     <option value="gemini">Google Gemini (Cloud)</option>
                                     <option value="ollama">Ollama (Local qwen2.5-coder)</option>
                                     <option value="groq">Groq (Cloud)</option>
+                                    <option value="openrouter">OpenRouter (Cloud)</option>
                                 </select>
                             </div>
                         </div>
@@ -160,6 +165,19 @@
                                  <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B (Preview)</option>
                              </select>
                              <small class="form-text">Select among the active freely available models in Groq's basic tier.</small>
+                        </div>
+
+                        <!-- OpenRouter Model Selector (Toggled dynamically) -->
+                        <div class="form-group hidden" id="openrouter-model-container">
+                             <label for="openrouter-model">OpenRouter Model</label>
+                             <select id="openrouter-model" class="form-control">
+                                 <option value="openrouter/free">Free Models Router (Default)</option>
+                             </select>
+                             <div style="margin-top: 10px;">
+                                  <label for="openrouter-custom-model">Paste Custom Model ID</label>
+                                  <input type="text" id="openrouter-custom-model" class="form-control" placeholder="e.g. meta-llama/llama-3.3-70b-instruct:free">
+                             </div>
+                             <small class="form-text">Type or paste any free-tier model ID (e.g. <code>meta-llama/llama-3.3-70b-instruct:free</code>) to add it to the dropdown and set it as default.</small>
                         </div>
 
 

@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusGemini = document.getElementById('status-gemini');
     const statusOllama = document.getElementById('status-ollama');
     const statusGroq = document.getElementById('status-groq');
+    const statusOpenRouter = document.getElementById('status-openrouter');
     
     // Input Fields
     const apiUrlInput = document.getElementById('api-url');
@@ -28,6 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const geminiModelContainer = document.getElementById('gemini-model-container');
     const groqModelSelect = document.getElementById('groq-model');
     const groqModelContainer = document.getElementById('groq-model-container');
+    const openrouterModelSelect = document.getElementById('openrouter-model');
+    const openrouterCustomModelInput = document.getElementById('openrouter-custom-model');
+    const openrouterModelContainer = document.getElementById('openrouter-model-container');
     
     // Console Output
     const consoleLogs = document.getElementById('console-logs');
@@ -60,8 +64,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function init() {
         loadHistory();
+        loadOpenRouterCustomModels();
         checkBackendStatus();
         setupEventListeners();
+    }
+
+    // Load OpenRouter custom models from localStorage and populate selection list
+    function loadOpenRouterCustomModels() {
+        const stored = localStorage.getItem('openrouter_custom_models');
+        let customModels = [];
+        if (stored) {
+            try {
+                customModels = JSON.parse(stored);
+            } catch (e) {
+                customModels = [];
+            }
+        }
+        // Populate select dropdown with custom models
+        customModels.forEach(modelId => {
+            let exists = false;
+            for (let i = 0; i < openrouterModelSelect.options.length; i++) {
+                if (openrouterModelSelect.options[i].value === modelId) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                const opt = document.createElement('option');
+                opt.value = modelId;
+                opt.textContent = modelId;
+                openrouterModelSelect.appendChild(opt);
+            }
+        });
+        
+        // Restore last selected active model
+        const activeModel = localStorage.getItem('openrouter_active_model') || 'openrouter/free';
+        if (activeModel !== 'openrouter/free') {
+            let exists = false;
+            for (let i = 0; i < openrouterModelSelect.options.length; i++) {
+                if (openrouterModelSelect.options[i].value === activeModel) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                const opt = document.createElement('option');
+                opt.value = activeModel;
+                opt.textContent = activeModel;
+                openrouterModelSelect.appendChild(opt);
+            }
+        }
+        openrouterModelSelect.value = activeModel;
     }
 
     // Load history list from localStorage
@@ -131,6 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
             language: data.language,
             modelProvider: data.modelProvider,
             groqModel: data.groqModel,
+            openrouterModel: data.openrouterModel,
             overview: data.result.overview,
             endpoints: data.result.endpoints,
             code: data.result.code,
@@ -213,6 +267,29 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             groqModelContainer.classList.add('hidden');
+        }
+
+        if (record.modelProvider === 'openrouter') {
+            openrouterModelContainer.classList.remove('hidden');
+            if (record.openrouterModel) {
+                // Ensure option exists in dropdown first
+                let exists = false;
+                for (let i = 0; i < openrouterModelSelect.options.length; i++) {
+                    if (openrouterModelSelect.options[i].value === record.openrouterModel) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) {
+                    const opt = document.createElement('option');
+                    opt.value = record.openrouterModel;
+                    opt.textContent = record.openrouterModel;
+                    openrouterModelSelect.appendChild(opt);
+                }
+                openrouterModelSelect.value = record.openrouterModel;
+            }
+        } else {
+            openrouterModelContainer.classList.add('hidden');
         }
 
         // Set output panel content
@@ -326,6 +403,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (groqModelSelect) groqModelSelect.selectedIndex = 0;
             if (groqModelContainer) groqModelContainer.classList.add('hidden');
             
+            if (openrouterModelSelect) {
+                const activeModel = localStorage.getItem('openrouter_active_model') || 'openrouter/free';
+                openrouterModelSelect.value = activeModel;
+            }
+            if (openrouterCustomModelInput) openrouterCustomModelInput.value = '';
+            if (openrouterModelContainer) openrouterModelContainer.classList.add('hidden');
+            
             // Remove active highlight in sidebar
             const items = historyList.querySelectorAll('.history-item');
             items.forEach(li => li.classList.remove('active'));
@@ -353,6 +437,60 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 groqModelContainer.classList.add('hidden');
             }
+
+            // Toggle OpenRouter
+            if (provider === 'openrouter') {
+                openrouterModelContainer.classList.remove('hidden');
+            } else {
+                openrouterModelContainer.classList.add('hidden');
+            }
+        });
+
+        // Handle OpenRouter custom model input
+        const handleCustomModelAdd = () => {
+            const modelId = openrouterCustomModelInput.value.trim();
+            if (!modelId) return;
+
+            // Check if option already exists
+            let exists = false;
+            for (let i = 0; i < openrouterModelSelect.options.length; i++) {
+                if (openrouterModelSelect.options[i].value === modelId) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                const opt = document.createElement('option');
+                opt.value = modelId;
+                opt.textContent = modelId;
+                openrouterModelSelect.appendChild(opt);
+            }
+            
+            // Set it as active
+            openrouterModelSelect.value = modelId;
+            
+            // Persist to custom models list
+            let customModels = [];
+            const stored = localStorage.getItem('openrouter_custom_models');
+            if (stored) {
+                try { customModels = JSON.parse(stored); } catch(e) {}
+            }
+            if (!customModels.includes(modelId)) {
+                customModels.push(modelId);
+                localStorage.setItem('openrouter_custom_models', JSON.stringify(customModels));
+            }
+            
+            // Persist active selection
+            localStorage.setItem('openrouter_active_model', modelId);
+        };
+
+        openrouterCustomModelInput.addEventListener('change', handleCustomModelAdd);
+        openrouterCustomModelInput.addEventListener('paste', () => {
+            setTimeout(handleCustomModelAdd, 0);
+        });
+        
+        openrouterModelSelect.addEventListener('change', () => {
+            localStorage.setItem('openrouter_active_model', openrouterModelSelect.value);
         });
 
         // Form Submit
@@ -449,6 +587,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const hasGroq = data.configuration.has_groq_key;
                 statusGroq.querySelector('.status-indicator').className = hasGroq ? 'status-indicator green' : 'status-indicator red';
                 statusGroq.querySelector('.status-label').textContent = hasGroq ? 'Available' : 'Config Required';
+
+                // Update OpenRouter status
+                const hasOpenRouter = data.configuration.has_openrouter_key;
+                statusOpenRouter.querySelector('.status-indicator').className = hasOpenRouter ? 'status-indicator green' : 'status-indicator red';
+                statusOpenRouter.querySelector('.status-label').textContent = hasOpenRouter ? 'Available' : 'Config Required';
                 
                 // Update Ollama status
                 statusOllama.querySelector('.status-indicator').className = 'status-indicator green';
@@ -465,6 +608,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             statusGroq.querySelector('.status-indicator').className = 'status-indicator red';
             statusGroq.querySelector('.status-label').textContent = 'Disconnected';
+
+            statusOpenRouter.querySelector('.status-indicator').className = 'status-indicator red';
+            statusOpenRouter.querySelector('.status-label').textContent = 'Disconnected';
         }
     }
 
@@ -488,6 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const modelProvider = modelProviderSelect.value;
         const geminiModel = geminiModelSelect.value;
         const groqModel = groqModelSelect.value;
+        const openrouterModel = openrouterModelSelect.value;
 
         // 1. Validation
         if (selectedSource === 'url' && !url) {
@@ -540,7 +687,8 @@ document.addEventListener('DOMContentLoaded', () => {
             url: selectedSource === 'url' ? url : null,
             raw_docs: selectedSource === 'text' ? rawDocs : null,
             gemini_model: geminiModel || null,
-            groq_model: groqModel || null
+            groq_model: groqModel || null,
+            openrouter_model: openrouterModel || null
         };
 
         let requestFailed = false;
@@ -622,6 +770,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 modelProvider: modelProvider,
                 geminiModel: geminiModel,
                 groqModel: groqModel,
+                openrouterModel: openrouterModel,
                 result: responseData
             });
             
@@ -643,6 +792,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 modelProvider: modelProvider,
                 geminiModel: geminiModel,
                 groqModel: groqModel,
+                openrouterModel: openrouterModel,
                 result: responseData
             });
         }

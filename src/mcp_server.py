@@ -184,7 +184,7 @@ def run_mcp_server():
                                 },
                                 "model_provider": {
                                     "type": "string",
-                                    "description": "The model provider to use ('gemini', 'ollama', or 'groq'). Default is 'gemini'."
+                                    "description": "The model provider to use ('gemini', 'ollama', 'groq', or 'openrouter'). Default is 'gemini'."
                                 },
                                 "gemini_key": {
                                     "type": "string",
@@ -201,6 +201,14 @@ def run_mcp_server():
                                 "groq_model": {
                                     "type": "string",
                                     "description": "Optional Groq Model ID (e.g., 'llama-3.3-70b-versatile')."
+                                },
+                                "openrouter_key": {
+                                    "type": "string",
+                                    "description": "Optional OpenRouter API Key. Required if model_provider is 'openrouter' and the server has no key configured."
+                                },
+                                "openrouter_model": {
+                                    "type": "string",
+                                    "description": "Optional OpenRouter Model ID (e.g., 'openrouter/free')."
                                 },
                                 "firecrawl_key": {
                                     "type": "string",
@@ -286,6 +294,8 @@ def run_mcp_server():
                     gemini_model = arguments.get("gemini_model")
                     groq_key = arguments.get("groq_key")
                     groq_model = arguments.get("groq_model")
+                    openrouter_key = arguments.get("openrouter_key")
+                    openrouter_model = arguments.get("openrouter_model")
                     firecrawl_key = arguments.get("firecrawl_key")
                     
                     if not scraped_text or not isinstance(scraped_text, str) or not use_case or not isinstance(use_case, str):
@@ -309,6 +319,8 @@ def run_mcp_server():
                             gemini_model=gemini_model,
                             groq_key=groq_key,
                             groq_model=groq_model,
+                            openrouter_key=openrouter_key,
+                            openrouter_model=openrouter_model,
                             firecrawl_key=firecrawl_key
                         )
                         
