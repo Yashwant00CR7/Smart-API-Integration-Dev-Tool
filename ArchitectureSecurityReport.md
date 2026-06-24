@@ -24,6 +24,9 @@ This report provides a formal evaluation of the Model Context Protocol (MCP) ser
 - **The Load-Time Decorator Trap**: Static method decorators (like tenacity's `@retry`) are evaluated at module load-time, causing them to hardcode retry configurations from class-level constants and completely bypass constructor-level overrides (such as `self.max_retries`).
 - **Mock-Exhaustion Protections**: When unit testing suites patch HTTP requests, they provide a strict number of responses matching expected retry limits via mock `side_effect` lists. If a static decorator overrides these limits, it triggers extra requests, exhausting the mock iterator and crashing tests with a `StopIteration` error.
 - **Dynamic Context Wrappers**: Our architecture enforces instantiating retry controllers dynamically inside instance methods at runtime. This maintains clean OOP encapsulation, respects user-configured retry limits, and prevents testing framework failures from mock depletion.
+- **Sandbox Traceback Minimization**: Pytest is run with `--tb=short` in the subprocess executor to suppress nested, repeating tenacity retry stacks. This prevents LLM context pollution and gives the self-healing agent clear, target-specific error logs.
+- **Forced Standard Library Mocking**: Prompt configurations enforce standard `unittest.mock` rather than third-party mocking libraries (`requests_mock`, `responses`). This guarantees zero external module dependencies in the sandbox environment, eliminating environment loading failures.
+- **Scraper Validation Guards**: The agent workflow implements early detection checks on the scraped documentation. If it detects empty data or a scraping error page (like a 403 Forbidden page), it raises a ValueError immediately, preventing silent generation failure and LLM endpoint hallucinations.
 
 ---
 

@@ -54,7 +54,7 @@ def run_tests(language: str, code: str, tests: str) -> Tuple[bool, str]:
             # Add sandbox directory to PYTHONPATH so pytest can import the client module
             env["PYTHONPATH"] = f"{sandbox_dir}{os.pathsep}{env.get('PYTHONPATH', '')}"
             # Use sys.executable to ensure we use the virtual environment's interpreter
-            run_args = [sys.executable, "-m", "pytest", test_filename]
+            run_args = [sys.executable, "-m", "pytest", "--tb=short", test_filename]
             
         elif language in ["javascript", "js"]:
             code_filename = "client.js"

@@ -67,11 +67,49 @@ def parse_ollama_json(response_text: str) -> Dict[str, str]:
             
     raise ValueError(f"Failed to parse JSON response from Ollama model. Raw response:\n{response_text}")
 
+LANGUAGE_SPECS = {
+    "python": {
+        "framework": "pytest/unittest",
+        "import_instruction": "Import the client wrapper from the 'client' module (e.g., `from client import MyAPIClient`).",
+        "rules": [
+            "DO NOT use class-level static decorators (e.g., @retry) on instance methods when retry/timeout configuration is dynamic. Instead, instantiate the retrier dynamically inside the instance method (e.g., using tenacity.Retrying) to respect self.max_retries and self.timeout.",
+            "Ensure mock side_effect lists have enough elements to match maximum attempts (e.g., max_retries + 1) to prevent mock iterator exhaustion (StopIteration).",
+            "DO NOT import or use third-party mocking libraries (e.g., requests_mock, responses). ONLY use the Python standard library's `unittest.mock` module (such as `patch` and `MagicMock`) for all request mocking.",
+            "Ensure transient network errors (such as connection timeouts and connection errors) are included in the retrier's retry-conditions alongside rate limits (429) and server errors (5xx).",
+            "Use tenacity.Retrying as a dynamic context wrapper directly (e.g., `retrier = Retrying(...)` and `return retrier(lambda: ...)` or similar) rather than defining dynamic inner decorator functions.",
+            "Ensure exception regex string patterns in tests (e.g., `assertRaisesRegex`) exactly match the formatting of messages raised by the client wrapper class (do not assume extra prefixes or text unless present in both).",
+            "When mocking `requests.exceptions.HTTPError` in unit tests, always initialize it with a descriptive message string matching the HTTP status (e.g., `requests.exceptions.HTTPError('500 Server Error...', response=mock_response)`) so that `str(e)` does not return empty."
+        ]
+    },
+    "javascript": {
+        "framework": "standard built-in assert module and node.js",
+        "import_instruction": "Import the client wrapper from `./client`.",
+        "rules": []
+    },
+    "typescript": {
+        "framework": "ts-node execution with standard assert",
+        "import_instruction": "Import the client wrapper from `./client`.",
+        "rules": []
+    },
+    "go": {
+        "framework": "native 'testing' package",
+        "import_instruction": "Import the sandbox package.",
+        "rules": []
+    },
+    "java": {
+        "framework": "Standard public Java class (matching the filename, e.g. TestClient) with a public static void main(String[] args) method that executes assertions using the standard `assert` keyword. Do not use JUnit or third-party libraries.",
+        "import_instruction": "Import the client class directly.",
+        "rules": []
+    }
+}
+
 def generate_code(state: AgentState) -> Dict[str, Any]:
     """
     Node that calls Gemini or Ollama to generate/regenerate API client wrapper code.
     """
-    scraped_text = state.get("scraped_text", "")
+    scraped_text = state.get("scraped_text", "").strip()
+    if not scraped_text or (("forbidden" in scraped_text.lower() or "failed" in scraped_text.lower() or "error" in scraped_text.lower()) and len(scraped_text) < 500):
+        raise ValueError("Scraped documentation is empty or represents a scraping error. Please provide valid API reference content.")
     use_case = state.get("use_case", "")
     language = state.get("language", "python").lower().strip()
     model_provider = state.get("model_provider", "gemini")
@@ -81,56 +119,72 @@ def generate_code(state: AgentState) -> Dict[str, Any]:
     
     print(f"[Agent] Generating code iteration {retry_count + 1} for language: {language}")
 
+    # Build dynamic language rules
+    spec = LANGUAGE_SPECS.get(language, {
+        "framework": "standard test framework",
+        "import_instruction": "Import client from `./client`.",
+        "rules": []
+    })
+    rules_list = [
+        f"Test Framework: Use {spec['framework']}.",
+        spec['import_instruction']
+    ] + spec['rules']
+    language_rules_str = "\n".join(f"- {rule}" for rule in rules_list)
+
     # Build prompt
     if retry_count == 0 or not error_logs:
         # Initial prompt
-        prompt = f"""You are a senior staff software engineer. Your task is to generate a fully-functional, production-grade client API wrapper class and an accompanying unit test suite.
+        prompt = f"""You are a Staff Software Engineer. Your task is to generate a fully-functional, production-ready client API wrapper class and an accompanying unit test suite.
 
-Target Language: {language}
-Use Case Details: {use_case}
-API Documentation Content:
+TARGET LANGUAGE:
+{language}
+
+USE CASE DETAILS:
+{use_case}
+
+API REFERENCE DOCUMENTATION:
 {scraped_text}
 
-Requirements:
-1. 'overview': Outline the authentication mechanism(s) used by the API and provide a clear recommendation on the integration path (REST client vs using a native SDK if available). Keep it clean and concise.
-2. 'endpoints': Summarize the endpoints, HTTP methods, parameters, request headers, and payloads required for the use case in a markdown or structured format.
+CORE REQUIREMENTS:
+1. 'overview': Outline the authentication mechanism(s) used by the API and recommend the integration path (REST client vs native SDK). Keep it clean and concise.
+2. 'endpoints': Summarize the endpoints, HTTP methods, parameters, request headers, and payloads required for the use case.
 3. 'code': Write the full client wrapper class code. The code must:
    - Handle connection timeouts, session reuse, and authorization headers.
    - Include robust error handling and throw custom descriptive exceptions.
-   - Implement exponential backoff retry logic for HTTP rate limits (429) or transient server errors (5xx).
-     * Python-specific rule: DO NOT use class-level static decorators (e.g., `@retry`) on instance methods when the retry limit or timeout is configuration-dependent. Instead, instantiate the retrier dynamically inside the request method (e.g. using `tenacity.Retrying` and executing the request within it) so it respects instance-level attributes like `self.max_retries` and `self.timeout`.
+   - Implement exponential backoff retry logic for transient errors (e.g., HTTP 429, 5xx) that honors user-configured retry/timeout parameters.
    - NOT contain any placeholders, mock code, or incomplete implementations.
-4. 'tests': Write a complete, executable unit test suite script to validate the wrapper class. Crucially:
-   - The tests must compile and run successfully via the native language environment.
-   - Use mock servers or standard library mock utilities (e.g., standard Python 'unittest.mock' package) rather than calling the real API.
-   - Python: Use pytest/unittest style. Must import the client wrapper from 'client' module (e.g., `from client import MyAPIClient`).
-     * Mock safety rule: Ensure mock `side_effect` lists contain enough mock responses to match the maximum number of attempts (e.g., `max_retries + 1`) to prevent mock iterator exhaustion and StopIteration errors.
-   - JavaScript: Use standard built-in assert module and node.js, importing from `./client`.
-   - TypeScript: Use ts-node execution, importing client from `./client`.
-   - Go: Use native 'testing' library, importing the sandbox package.
-   - Java: Use a standard public Java class (match classname to test file, e.g., 'TestClient') with a `public static void main(String[] args)` method that executes test assertions. Assertions must be written with the standard `assert` keyword (e.g. `assert response != null;`). Do not use third-party libraries like JUnit.
-5. 'readme': Write a markdown usage guide explaining installation, configuration, and a quick-start example.
+4. 'tests': Write a complete, executable unit test suite script to validate the wrapper class. The tests must:
+   - Compile and run successfully in the target language environment.
+   - Use mock servers or standard library mock utilities rather than calling the real API.
+5. 'readme': Write a markdown usage guide explaining setup, configuration, and a quick-start example.
+
+LANGUAGE-SPECIFIC RULES:
+{language_rules_str}
 """
     else:
         # Self-healing prompt
-        prompt = f"""You are a senior staff software engineer. Your previous code generation failed compilation or execution tests. 
-Your task is to analyze the error logs and regenerate the complete files to fix the issue.
+        prompt = f"""You are a Staff Software Engineer. The previously generated API client wrapper or test suite failed verification.
+Analyze the error logs and regenerate the complete files to fix the issue.
 
-Target Language: {language}
-Use Case Details: {use_case}
-API Documentation Content:
+TARGET LANGUAGE:
+{language}
+
+USE CASE DETAILS:
+{use_case}
+
+API REFERENCE DOCUMENTATION:
 {scraped_text}
 
-Error Logs from sandbox run:
+ERROR LOGS FROM SANDBOX RUN:
 {error_logs}
 
-Previously Generated Client Code:
+PREVIOUSLY GENERATED CLIENT CODE:
 {state.get("code", "")}
 
-Previously Generated Test Code:
+PREVIOUSLY GENERATED TEST CODE:
 {state.get("tests", "")}
 
-Instructions:
+INSTRUCTIONS:
 1. Correct the wrapper code ('code') or the test suite ('tests') or both to resolve the error.
 2. Ensure that standard library mocks are correctly imported and used.
 3. If the error shows missing package imports or runtime path issues, ensure imports are aligned with standard local directory layouts.
