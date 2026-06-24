@@ -1,281 +1,414 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="shortcut icon" href="data:,">
-    <title>Smart API DevTool - Premium Dashboard</title>
-    <!-- Google Fonts -->
+    <title>Smart API DevTool - AI Client Generation Dashboard</title>
+    
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <!-- JSZip for Client-side ZIP compilation -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- External Utilities -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        heading: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        },
+                        accent: {
+                            500: '#06b6d4',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <div class="app-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<body class="h-full overflow-hidden text-slate-900 font-sans antialiased bg-slate-50 dark:bg-[#060913] dark:text-slate-100 transition-colors duration-200">
+
+    <!-- Unified Master App Frame -->
+    <div class="flex h-screen w-screen overflow-hidden relative">
+        
+        <!-- Sidebar Navigation (With Collapsible Transition Bounds) -->
+        <aside id="app-sidebar" class="w-80 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 p-6 z-20 shadow-sm sidebar-transition overflow-hidden dark:bg-[#080c18]/85 dark:border-white/10 dark:shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)]">
+            <div class="mb-8 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <svg class="w-8 h-8 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="url(#logo-grad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M2 17L12 22L22 17" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M2 12L12 17L22 12" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <defs>
                             <linearGradient id="logo-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                                <stop stop-color="#6366f1"/>
-                                <stop offset="1" stop-color="#22d3ee"/>
+                                <stop stop-color="#4f46e5"/>
+                                <stop offset="1" stop-color="#06b6d4"/>
                             </linearGradient>
                         </defs>
                     </svg>
-                    <span class="logo-text">Smart API <span class="accent-text">DevTool</span></span>
+                    <span class="font-heading text-xl font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap">Smart API <span class="bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent">DevTool</span></span>
                 </div>
-                <p class="tagline">Phase 4 Premium UI</p>
             </div>
             
-            <button id="btn-new" class="btn btn-new-integration">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                New Integration
+            <button id="btn-new" class="w-full inline-flex items-center justify-center gap-2 font-bold text-sm py-3 px-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 transition duration-150 mb-6 group whitespace-nowrap dark:bg-white/5 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/10">
+                <svg class="w-4.5 h-4.5 text-slate-500 group-hover:text-primary-600 transition dark:text-slate-400 dark:group-hover:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                New Integration Space
             </button>
             
-            <div class="history-section">
-                <h3>Integrations History</h3>
-                <ul id="history-list" class="history-list">
-                    <li class="empty-history">No integrations yet</li>
+            <!-- Integration History Cache list container -->
+            <div class="flex-grow overflow-y-auto mb-6 pr-1">
+                <div class="flex items-center justify-between mb-3 whitespace-nowrap">
+                    <h3 class="font-heading text-xs uppercase tracking-wider text-slate-400 font-bold dark:text-slate-500">Workspace Cache</h3>
+                    <span id="history-count" class="text-[10px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded dark:bg-white/10 dark:text-slate-400">0</span>
+                </div>
+                <ul id="history-list" class="flex flex-col gap-2">
+                    <!-- Dynamic rendering fallback -->
+                    <li class="empty-history text-center text-xs text-slate-400 py-8 border border-dashed border-slate-200 rounded-xl bg-slate-50/50 dark:border-white/5 dark:bg-[#070a13]/30 dark:text-slate-505">
+                        Workspace history empty
+                    </li>
                 </ul>
             </div>
             
-            <div class="sidebar-footer">
-                <button id="btn-clear-history" class="btn btn-secondary btn-sm">Clear History</button>
-                <div class="credit">Smart API Integration DevTool</div>
+            <!-- Sidebar footer configuration clear operations -->
+            <div class="border-t border-slate-100 pt-4 flex flex-col gap-3 whitespace-nowrap dark:border-white/10">
+                <button id="btn-clear-history" class="w-full text-center text-xs font-semibold py-2 px-3 border border-slate-200 rounded-lg bg-white text-slate-600 hover:text-red-600 hover:border-red-100 hover:bg-red-50/30 transition duration-150 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:text-red-400 dark:hover:border-red-500/20 dark:hover:bg-red-950/20">
+                    Clear Workspace Cache
+                </button>
+                <div class="text-[10px] text-slate-400 text-center font-medium dark:text-slate-500">Engine Run Core System • Active</div>
             </div>
         </aside>
 
-        <!-- Main Content Area -->
-        <main class="main-content">
-            <!-- Header/Status Bar -->
-            <header class="main-header">
-                <h1>AI API Client Generator</h1>
-                <div class="status-bar">
-                    <div class="status-item" id="status-backend">
-                        <span class="status-indicator yellow"></span>
-                        Backend: <span class="status-label">Checking...</span>
+        <!-- Right Side Main Content Viewport -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#060913]">
+            <!-- Global Metadata and Integrations Status Indicators -->
+            <header class="flex justify-between items-center px-8 py-5 bg-white border-b border-slate-200 flex-shrink-0 shadow-sm z-10 dark:bg-[#080c18]/85 dark:border-white/10 dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
+                <div class="flex items-center gap-4">
+                    <!-- Toggle Sidebar Button for Maximum Screen Space -->
+                    <button id="btn-toggle-sidebar" class="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition shadow-sm bg-white dark:border-white/10 dark:hover:bg-white/10 dark:text-slate-400 dark:hover:text-white dark:bg-white/5 dark:shadow-none" title="Toggle Sidebar Workspace View">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    </button>
+                    <div>
+                        <h1 class="font-heading font-extrabold text-2xl text-slate-900 tracking-tight dark:text-white">AI Client Generation Dashboard</h1>
+                        <p class="text-xs text-slate-500 mt-0.5 dark:text-slate-400">Scrape docs, build safe codebases, and compile tests autonomously.</p>
                     </div>
-                    <div class="status-item" id="status-gemini">
-                        <span class="status-indicator gray"></span>
-                        Gemini API: <span class="status-label">Not Configured</span>
+                </div>
+                
+                <div class="flex gap-2 flex-wrap max-w-xl justify-end items-center" id="status-bar-container">
+                    <!-- Theme Selector Toggle Button -->
+                    <button id="btn-theme-toggle" class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition shadow-sm dark:bg-white/5 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/10" title="Toggle theme mode">
+                        <!-- Moon Icon (for switching to dark theme) -->
+                        <svg id="theme-icon-dark" class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                        <!-- Sun Icon (for switching to light theme) -->
+                        <svg id="theme-icon-light" class="w-4 h-4 text-amber-500 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path>
+                        </svg>
+                        <span id="theme-toggle-text">Blue Mode</span>
+                    </button>
+
+                    <div class="inline-flex items-center text-xs font-medium text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm dark:text-slate-300 dark:bg-white/5 dark:border-white/10 dark:shadow-none" id="status-backend">
+                        <span class="w-2 h-2 rounded-full bg-slate-300 mr-2" id="ind-backend"></span>
+                        Backend: <span class="status-label font-bold ml-1 text-slate-800 dark:text-slate-200" id="label-backend">Offline</span>
                     </div>
-                    <div class="status-item" id="status-ollama">
-                        <span class="status-indicator gray"></span>
-                        Ollama: <span class="status-label">Checking...</span>
+                    <div class="inline-flex items-center text-xs font-medium text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm dark:text-slate-300 dark:bg-white/5 dark:border-white/10 dark:shadow-none" id="status-gemini">
+                        <span class="w-2 h-2 rounded-full bg-slate-300 mr-2" id="ind-gemini"></span>
+                        Gemini: <span class="status-label font-bold ml-1 text-slate-800 dark:text-slate-200" id="label-gemini">Offline</span>
                     </div>
-                    <div class="status-item" id="status-groq">
-                        <span class="status-indicator gray"></span>
-                        Groq API: <span class="status-label">Not Configured</span>
+                    <div class="inline-flex items-center text-xs font-medium text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm dark:text-slate-300 dark:bg-white/5 dark:border-white/10 dark:shadow-none" id="status-ollama">
+                        <span class="w-2 h-2 rounded-full bg-slate-300 mr-2" id="ind-ollama"></span>
+                        Ollama: <span class="status-label font-bold ml-1 text-slate-800 dark:text-slate-200" id="label-ollama">Offline</span>
                     </div>
-                    <div class="status-item" id="status-openrouter">
-                        <span class="status-indicator gray"></span>
-                        OpenRouter: <span class="status-label">Not Configured</span>
+                    <div class="inline-flex items-center text-xs font-medium text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm dark:text-slate-300 dark:bg-white/5 dark:border-white/10 dark:shadow-none" id="status-groq">
+                        <span class="w-2 h-2 rounded-full bg-slate-300 mr-2" id="ind-groq"></span>
+                        Groq: <span class="status-label font-bold ml-1 text-slate-800 dark:text-slate-200" id="label-groq">Offline</span>
+                    </div>
+                    <div class="inline-flex items-center text-xs font-medium text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm dark:text-slate-300 dark:bg-white/5 dark:border-white/10 dark:shadow-none" id="status-openrouter">
+                        <span class="w-2 h-2 rounded-full bg-slate-300 mr-2" id="ind-openrouter"></span>
+                        OpenRouter: <span class="status-label font-semibold ml-1 text-slate-800 dark:text-slate-200" id="label-openrouter">Offline</span>
                     </div>
                 </div>
             </header>
 
-            <!-- Dashboard Content Grid -->
-            <div class="dashboard-grid">
-                <!-- Left: Form Controls -->
-                <section class="control-panel glass-card">
-                    <div class="section-title">
-                        <h2>Configure Generation</h2>
-                        <p>Define API sources, parameters, and credentials</p>
-                    </div>
-                    
-                    <form id="gen-form" onsubmit="return false;">
-                        <!-- API Source Selection -->
-                        <div class="form-group">
-                            <label>API Documentation Source</label>
-                            <div class="source-tabs">
-                                <button type="button" class="tab-btn active" id="tab-src-url">Scrape URL</button>
-                                <button type="button" class="tab-btn" id="tab-src-text">Paste Text Docs</button>
-                            </div>
-                            
-                            <div id="src-url-container" class="source-input-container">
-                                <input type="url" id="api-url" class="form-control" placeholder="https://api.example.com/docs/v1">
-                                <small class="form-text">Scraped dynamically using Firecrawl (Keyless Cloud or custom API key).</small>
-                            </div>
-                            
-                            <div id="src-text-container" class="source-input-container hidden">
-                                <textarea id="raw-docs" class="form-control" rows="8" placeholder="Paste endpoints definition, headers, or full API documentation markdown here..."></textarea>
-                                <small class="form-text">Direct markdown text fallback for local endpoints or custom offline APIs.</small>
+            <!-- Dual Columns Desktop Panel Core (With Dynamic Resize Splitter Pattern) -->
+            <div id="desktop-workspace" class="flex p-6 flex-grow overflow-hidden min-h-0 w-full relative bg-slate-50 dark:bg-[#060913]">
+                
+                <!-- Left Parameters column (Width is dynamic and draggable) -->
+                <div id="left-panel-container" class="h-full overflow-y-auto pr-1 flex flex-col gap-6 flex-shrink-0" style="width: 450px; min-width: 320px; max-width: 750px;">
+                    <section class="bg-white border border-slate-200 rounded-xl shadow-sm p-6 flex flex-col gap-5 dark:bg-[#0d1423]/65 dark:backdrop-blur-md dark:border-white/10 dark:shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)]">
+                        <div class="border-b border-slate-100 pb-3 flex justify-between items-center dark:border-white/5">
+                            <div>
+                                <h2 class="font-heading text-lg font-bold text-slate-900 dark:text-white">Execution Configuration</h2>
+                                <p class="text-xs text-slate-500 mt-1 dark:text-slate-400">Specify core operational attributes.</p>
                             </div>
                         </div>
-
-                        <!-- Target Use Case -->
-                        <div class="form-group">
-                            <label for="use-case">Target Use Case / Target Functions</label>
-                            <textarea id="use-case" class="form-control" rows="4" required placeholder="Example: Authenticate using Bearer tokens, retrieve a list of active users, and update user profile info using a JSON payload."></textarea>
-                            <small class="form-text">Detail specific operations or endpoints you want implemented in the client wrapper.</small>
-                        </div>
-
-                        <!-- Language & Model Preferences -->
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="language">Target Language</label>
-                                <select id="language" class="form-control">
-                                    <option value="python">Python (pytest)</option>
-                                    <option value="javascript">JavaScript (Node)</option>
-                                    <option value="typescript">TypeScript (ts-node)</option>
-                                    <option value="go">Go (testing)</option>
-                                    <option value="java">Java (Main assertions)</option>
-                                </select>
+                        
+                        <form id="gen-form" onsubmit="return false;" class="flex flex-col gap-4">
+                            <!-- Toggle Documentation Selection Methods -->
+                            <div class="flex flex-col gap-2">
+                                <label class="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Documentation Source System</label>
+                                <div class="flex bg-slate-100 p-1 border border-slate-200/60 rounded-xl dark:bg-black/30 dark:border-white/5">
+                                    <button type="button" class="flex-1 py-2 text-xs font-bold rounded-lg transition duration-150 bg-white text-slate-900 shadow-sm dark:bg-white/10 dark:text-white" id="tab-src-url">Scrape Documentation URL</button>
+                                    <button type="button" class="flex-1 py-2 text-xs font-bold rounded-lg transition duration-150 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200" id="tab-src-text">Raw Docs Markdown</button>
+                                </div>
+                                
+                                <div id="src-url-container" class="mt-1">
+                                    <input type="url" id="api-url" class="w-full bg-slate-50 hover:bg-slate-50/50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-primary-600 focus:bg-white focus:ring-4 focus:ring-indigo-100 transition duration-150 dark:bg-[#070a13]/60 dark:border-white/10 dark:text-slate-200 dark:focus:bg-[#070a13] dark:focus:border-primary-600 dark:focus:ring-indigo-950/50" placeholder="https://api.stripe.com/docs/v1">
+                                    <small class="text-[11px] text-slate-400 mt-1.5 block leading-relaxed dark:text-slate-500">System relies on Cloud Firecrawl to scrape target specifications dynamically.</small>
+                                </div>
+                                
+                                <div id="src-text-container" class="mt-1 hidden">
+                                    <textarea id="raw-docs" class="w-full bg-slate-50 hover:bg-slate-50/50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-primary-600 focus:bg-white focus:ring-4 focus:ring-indigo-100 transition duration-150 font-mono dark:bg-[#070a13]/60 dark:border-white/10 dark:text-slate-200 dark:focus:bg-[#070a13] dark:focus:border-primary-600 dark:focus:ring-indigo-950/50" rows="8" placeholder="# Payment Records API&#10;POST /v1/charges&#10;Headers: Authorization Bearer token"></textarea>
+                                    <small class="text-[11px] text-slate-400 mt-1.5 block leading-relaxed dark:text-slate-500">Direct offline fallback bypass mapping tool.</small>
+                                </div>
                             </div>
-                            
-                            <div class="form-group">
-                                <label for="model-provider">Model Provider</label>
-                                <select id="model-provider" class="form-control">
-                                    <option value="gemini">Google Gemini (Cloud)</option>
-                                    <option value="ollama">Ollama (Local qwen2.5-coder)</option>
-                                    <option value="groq">Groq (Cloud)</option>
-                                    <option value="openrouter">OpenRouter (Cloud)</option>
-                                </select>
+
+                            <!-- Target use cases constraints -->
+                            <div class="flex flex-col gap-1.5">
+                                <label for="use-case" class="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Target Use Case Constraints</label>
+                                <textarea id="use-case" class="w-full bg-slate-50 hover:bg-slate-50/50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-primary-600 focus:bg-white focus:ring-4 focus:ring-indigo-100 transition duration-150 dark:bg-[#070a13]/60 dark:border-white/10 dark:text-slate-200 dark:focus:bg-[#070a13] dark:focus:border-primary-600 dark:focus:ring-indigo-950/50" rows="4" required placeholder="Example: Create charge sessions, support error retries with exponential backoffs, and list entities catalog using requests & pytest mock fixtures."></textarea>
                             </div>
-                        </div>
 
-                        <!-- Gemini Model Selector (Toggled dynamically) -->
-                        <div class="form-group" id="gemini-model-container">
-                             <label for="gemini-model">Gemini Model</label>
-                             <select id="gemini-model" class="form-control">
-                                 <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended)</option>
-                                 <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (Fast)</option>
-                                 <option value="gemini-2.5-pro">Gemini 2.5 Pro (High Reasoning)</option>
-                                 <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite (Next-Gen Fast)</option>
-                                 <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Next-Gen Preview)</option>
-                                 <option value="gemini-3.5-flash">Gemini 3.5 Flash (Next-Gen Flash)</option>
-                             </select>
-                             <small class="form-text">Select among the active free models available on Google AI Studio.</small>
-                        </div>
-
-                        <!-- Groq Model Selector (Toggled dynamically) -->
-                        <div class="form-group hidden" id="groq-model-container">
-                             <label for="groq-model">Groq Model</label>
-                             <select id="groq-model" class="form-control">
-                                 <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile (Recommended)</option>
-                                 <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant (Fast)</option>
-                                 <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B (Preview)</option>
-                             </select>
-                             <small class="form-text">Select among the active freely available models in Groq's basic tier.</small>
-                        </div>
-
-                        <!-- OpenRouter Model Selector (Toggled dynamically) -->
-                        <div class="form-group hidden" id="openrouter-model-container">
-                             <label for="openrouter-model">OpenRouter Model</label>
-                             <select id="openrouter-model" class="form-control">
-                                 <option value="openrouter/free">Free Models Router (Default)</option>
-                             </select>
-                             <div style="margin-top: 10px;">
-                                  <label for="openrouter-custom-model">Paste Custom Model ID</label>
-                                  <input type="text" id="openrouter-custom-model" class="form-control" placeholder="e.g. meta-llama/llama-3.3-70b-instruct:free">
-                             </div>
-                             <small class="form-text">Type or paste any free-tier model ID (e.g. <code>meta-llama/llama-3.3-70b-instruct:free</code>) to add it to the dropdown and set it as default.</small>
-                        </div>
-
-
-
-                        <!-- Action Button -->
-                        <button type="submit" id="btn-generate" class="btn btn-primary btn-block">
-                            <span class="btn-text">Generate Verified Wrapper</span>
-                            <div class="loader hidden"></div>
-                        </button>
-                    </form>
-                </section>
-
-                <!-- Right: Simulated Console & Output Viewer -->
-                <section class="output-panel">
-                    <!-- Agent Console Logging -->
-                    <div class="console-card glass-card">
-                        <div class="console-header">
-                            <div class="window-buttons">
-                                <span class="dot red"></span>
-                                <span class="dot yellow"></span>
-                                <span class="dot green"></span>
+                            <!-- Core Language Options and Model Configurations -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="flex flex-col gap-1.5">
+                                    <label for="language" class="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Code Runtime</label>
+                                    <select id="language" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:border-primary-600 transition duration-150 font-semibold cursor-pointer dark:bg-[#070a13]/60 dark:border-white/10 dark:text-slate-200">
+                                        <option value="python">Python (pytest)</option>
+                                        <option value="javascript">JavaScript (Node)</option>
+                                        <option value="typescript">TypeScript (ts-node)</option>
+                                        <option value="go">Go (testing)</option>
+                                        <option value="java">Java (JUnit)</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="flex flex-col gap-1.5">
+                                    <label for="model-provider" class="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Model Provider</label>
+                                    <select id="model-provider" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:border-primary-600 transition duration-150 font-semibold cursor-pointer dark:bg-[#070a13]/60 dark:border-white/10 dark:text-slate-200">
+                                        <option value="gemini">Google Gemini (Cloud)</option>
+                                        <option value="ollama">Ollama (Local Node)</option>
+                                        <option value="groq">Groq (Inference)</option>
+                                        <option value="openrouter">OpenRouter (Cloud)</option>
+                                    </select>
+                                </div>
                             </div>
-                            <span class="console-title">Agentic Sandbox Session</span>
-                            <span class="console-status" id="console-pulse">Idle</span>
-                        </div>
-                        <div class="console-body" id="console-logs">
-                            <div class="console-line system">[System] Ready. Enter parameters and click 'Generate' to initiate the self-healing workflow.</div>
-                        </div>
-                    </div>
 
-                    <!-- Generation Output Panel (Initially hidden, revealed on success) -->
-                    <div id="results-card" class="results-card glass-card hidden">
-                        <div class="results-header">
-                            <div class="results-title-section">
-                                <span class="badge" id="badge-language">Python</span>
-                                <h3 id="results-headline">Client Wrapper Package</h3>
+                            <!-- Gemini model level selector -->
+                            <div class="flex flex-col gap-1.5" id="gemini-model-container">
+                                 <label for="gemini-model" class="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Gemini Tier Selection</label>
+                                 <select id="gemini-model" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:border-primary-600 transition duration-150 cursor-pointer dark:bg-[#070a13]/60 dark:border-white/10 dark:text-slate-200">
+                                     <option value="gemini-2.5-flash">Gemini 2.5 Flash (Default optimized)</option>
+                                     <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+                                     <option value="gemini-2.5-pro">Gemini 2.5 Pro (Advanced reasoning)</option>
+                                     <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite (Next-Gen Fast)</option>
+                                     <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Next-Gen Preview)</option>
+                                     <option value="gemini-3.5-flash">Gemini 3.5 Flash (Next-Gen Flash)</option>
+                                 </select>
                             </div>
-                            <div class="export-actions">
-                                <button id="btn-download-zip" class="btn btn-success">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                    Download ZIP Package
+
+                            <!-- Groq model tier selector -->
+                            <div class="flex flex-col gap-1.5 hidden" id="groq-model-container">
+                                 <label for="groq-model" class="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Groq Inference Core</label>
+                                 <select id="groq-model" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:border-primary-600 transition duration-150 cursor-pointer dark:bg-[#070a13]/60 dark:border-white/10 dark:text-slate-200">
+                                     <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
+                                     <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+                                     <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B (Preview)</option>
+                                 </select>
+                            </div>
+
+                            <!-- OpenRouter path configs -->
+                            <div class="flex flex-col gap-2.5 hidden" id="openrouter-model-container">
+                                 <div class="flex flex-col gap-1.5">
+                                     <label for="openrouter-model" class="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">OpenRouter Default</label>
+                                     <select id="openrouter-model" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:border-primary-600 transition duration-150 cursor-pointer dark:bg-[#070a13]/60 dark:border-white/10 dark:text-slate-200">
+                                         <option value="openrouter/free">Default Free Auto-routing</option>
+                                     </select>
+                                 </div>
+                                 <div class="flex flex-col gap-1.5">
+                                      <label for="openrouter-custom-model" class="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Custom Model identity String</label>
+                                      <input type="text" id="openrouter-custom-model" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-primary-600 transition duration-150 dark:bg-[#070a13]/60 dark:border-white/10 dark:text-slate-200 dark:placeholder-slate-500" placeholder="meta-llama/llama-3.3-70b-instruct:free">
+                                 </div>
+                            </div>
+
+                            <!-- Advanced Prompt Settings Accordion -->
+                            <div class="border border-slate-200 rounded-lg overflow-hidden mt-1 dark:border-white/10">
+                                <button type="button" id="btn-toggle-advanced" class="w-full flex justify-between items-center bg-slate-50 hover:bg-slate-100/85 px-4 py-2.5 text-xs font-bold text-slate-700 tracking-wider transition animate-all duration-200 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-300">
+                                    <span>ADVANCED CONFIGURATIONS</span>
+                                    <svg id="svg-advanced-arrow" class="w-4 h-4 transform transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
                                 </button>
+                                <div id="advanced-container" class="hidden p-4 border-t border-slate-200 flex flex-col gap-3 bg-white dark:border-white/10 dark:bg-[#0d1423]/40">
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider dark:text-slate-400">Agent Generation Temperature</label>
+                                        <div class="flex items-center gap-3">
+                                            <input type="range" id="system-temperature" min="0" max="1" step="0.1" value="0.2" class="w-full accent-primary-600 cursor-pointer">
+                                            <span id="label-temperature" class="text-xs font-bold text-slate-700 w-8 text-right dark:text-slate-300">0.2</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider dark:text-slate-400">Base Self-Healing Retries</label>
+                                        <input type="number" id="base-retries" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-primary-600 focus:bg-white dark:bg-[#070a13]/60 dark:border-white/10 dark:text-slate-200 dark:focus:bg-[#070a13]" value="3" min="1" max="5">
+                                    </div>
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider dark:text-slate-400">Global System Instructions Override</label>
+                                        <textarea id="custom-prompt-override" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-primary-600 focus:bg-white font-mono dark:bg-[#070a13]/60 dark:border-white/10 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:bg-[#070a13]" rows="3" placeholder="Include customized backoff retry templates or authentication error handlers override guidelines..."></textarea>
+                                    </div>
+                                </div>
                             </div>
+
+                            <!-- Execution Engine Trigger -->
+                            <button type="submit" id="btn-generate" class="w-full relative inline-flex items-center justify-center gap-2 font-bold text-sm text-white py-3 px-4 rounded-xl bg-primary-600 hover:bg-primary-700 shadow-md hover:shadow-indigo-100 transition duration-150 mt-1 dark:shadow-none">
+                                <span class="btn-text">Execute Self-Healing Generator</span>
+                                <div class="loader hidden w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin absolute right-4"></div>
+                            </button>
+                        </form>
+                    </section>
+                </div>
+
+                <!-- Column Splitter Resizer (Draggable Width Bar) -->
+                <div id="column-splitter" class="w-2 hover:w-3 bg-slate-100 hover:bg-indigo-300 cursor-col-resize self-stretch transition-all duration-150 flex-shrink-0 flex items-center justify-center relative mx-1 rounded-full group dark:bg-white/5 dark:hover:bg-indigo-500/30">
+                    <div class="absolute inset-y-0 -left-1.5 -right-1.5 cursor-col-resize z-10"></div> <!-- wider tap bounds -->
+                    <div class="flex flex-col gap-1.5 items-center justify-center opacity-40 group-hover:opacity-100 transition-opacity">
+                        <span class="w-1 h-1 rounded-full bg-slate-400 group-hover:bg-indigo-600 dark:bg-slate-600 dark:group-hover:bg-indigo-400"></span>
+                        <span class="w-1 h-1 rounded-full bg-slate-400 group-hover:bg-indigo-600 dark:bg-slate-600 dark:group-hover:bg-indigo-400"></span>
+                        <span class="w-1 h-1 rounded-full bg-slate-400 group-hover:bg-indigo-600 dark:bg-slate-600 dark:group-hover:bg-indigo-400"></span>
+                    </div>
+                </div>
+
+                <!-- Right Telemetry Panel and Code Area Column -->
+                <div id="right-workspace-container" class="flex-grow flex-1 h-full flex flex-col gap-4 min-h-0 min-w-0">
+                    
+                    <!-- Sandbox Telemetry Console Frame (Draggable Vertical Viewport, Resized Snappy) -->
+                    <div id="console-wrapper" class="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-slate-900 flex flex-col flex-shrink-0 relative dark:border-white/10 dark:bg-slate-950 dark:shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)]" style="height: 250px; min-height: 44px; max-height: 600px;">
+                        <div class="bg-slate-950 px-5 py-3 flex items-center border-b border-slate-800 flex-shrink-0 dark:bg-[#02040a] dark:border-white/5">
+                            <div class="flex gap-1.5 mr-4 flex-shrink-0">
+                                <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                            </div>
+                            <span class="font-mono text-[11px] text-slate-500 font-semibold tracking-tight truncate mr-2 dark:text-slate-400">Sandbox Environment Active Status Console</span>
+                            <span class="ml-auto text-[9px] font-bold text-primary-100 bg-primary-700 border border-primary-600 px-2 py-0.5 rounded uppercase tracking-wider animate-pulse flex-shrink-0" id="console-pulse">Idle</span>
+                        </div>
+                        <div class="p-4 flex-grow overflow-y-auto font-mono text-[12px] flex flex-col gap-1 text-slate-300 bg-slate-950 dark:bg-[#02040a]" id="console-logs">
+                            <div class="console-line text-slate-500">[System] Virtual telemetry compiler online. Awaiting runtime task configurations...</div>
+                        </div>
+                    </div>
+
+                    <!-- Console Height Resizer Splitter (Vertical Draggable Row Bar) -->
+                    <div id="console-resizer" class="h-2 hover:h-3 bg-slate-100 hover:bg-indigo-300 cursor-row-resize transition-all duration-150 flex-shrink-0 flex items-center justify-center relative my-1 rounded-full group z-10 dark:bg-white/5 dark:hover:bg-indigo-500/30">
+                        <div class="absolute inset-x-0 -top-1.5 -bottom-1.5 cursor-row-resize z-20"></div> <!-- wider touch target area -->
+                        <div class="flex gap-1.5 items-center justify-center opacity-40 group-hover:opacity-100 transition-opacity">
+                            <span class="w-3.5 h-1 rounded-full bg-slate-400 group-hover:bg-indigo-600 dark:bg-slate-600 dark:group-hover:bg-indigo-400"></span>
+                            <span class="w-3.5 h-1 rounded-full bg-slate-400 group-hover:bg-indigo-600 dark:bg-slate-600 dark:group-hover:bg-indigo-400"></span>
+                            <span class="w-3.5 h-1 rounded-full bg-slate-400 group-hover:bg-indigo-600 dark:bg-slate-600 dark:group-hover:bg-indigo-400"></span>
+                        </div>
+                    </div>
+
+                    <!-- Sandbox interactive package results code space -->
+                    <div id="results-card" class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex-grow flex flex-col min-h-0 hidden dark:bg-[#0d1423]/65 dark:backdrop-blur-md dark:border-white/10 dark:shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)]">
+                        <!-- Top Header Actions -->
+                        <div class="flex justify-between items-center px-6 py-4 border-b border-slate-100 flex-shrink-0 bg-white dark:border-white/5 dark:bg-transparent">
+                            <div class="flex items-center gap-2.5">
+                                <span class="badge text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-md dark:bg-indigo-950/40 dark:border-indigo-900/30 dark:text-indigo-300" id="badge-language">Python</span>
+                                <h3 id="results-headline" class="font-heading font-extrabold text-sm text-slate-900 truncate max-w-sm dark:text-white">Output Class Wrapper Bundle</h3>
+                            </div>
+                            <button id="btn-download-zip" class="inline-flex items-center gap-1.5 font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-700 py-2 px-3 rounded-lg transition duration-150 shadow-sm shadow-emerald-50 dark:shadow-none">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                Extract ZIP Deliverable
+                            </button>
                         </div>
 
-                        <!-- Results Tabs -->
-                        <div class="results-tabs">
-                            <button class="res-tab-btn active" data-tab="res-overview">Overview</button>
-                            <button class="res-tab-btn" data-tab="res-endpoints">Endpoints</button>
-                            <button class="res-tab-btn" data-tab="res-code">Client Code</button>
-                            <button class="res-tab-btn" data-tab="res-tests">Unit Tests</button>
-                            <button class="res-tab-btn" data-tab="res-readme">Usage Guide</button>
+                        <!-- Header Viewport Tab selections -->
+                        <div class="flex bg-slate-50 border-b border-slate-200 px-4 flex-shrink-0 dark:bg-[#080c18]/80 dark:border-white/10">
+                            <button class="res-tab-btn active relative py-3.5 px-4 text-xs font-bold text-primary-600 tab-indicator-active" data-tab="res-overview">Overview Paths</button>
+                            <button class="res-tab-btn relative py-3.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200" data-tab="res-endpoints">Endpoints Tree</button>
+                            <button class="res-tab-btn relative py-3.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200" data-tab="res-code">Wrapper Code</button>
+                            <button class="res-tab-btn relative py-3.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200" data-tab="res-tests">Automated Unit Tests</button>
+                            <button class="res-tab-btn relative py-3.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200" data-tab="res-readme">Usage Specification Guide</button>
                         </div>
 
-                        <!-- Results Panels -->
-                        <div class="results-panels-container">
+                        <!-- Rendered Panels viewport -->
+                        <div class="p-6 overflow-y-auto flex-grow relative bg-white dark:bg-[#0d1423]/30">
                             <!-- Overview -->
                             <div class="res-panel active" id="res-overview">
-                                <div class="markdown-body" id="overview-content"></div>
+                                <div class="markdown-body text-sm text-slate-600 max-w-none dark:text-slate-300" id="overview-content"></div>
                             </div>
                             
                             <!-- Endpoints -->
                             <div class="res-panel" id="res-endpoints">
-                                <div class="markdown-body" id="endpoints-content"></div>
+                                <div class="markdown-body text-sm text-slate-600 max-w-none dark:text-slate-300" id="endpoints-content"></div>
                             </div>
                             
                             <!-- Client Code -->
                             <div class="res-panel" id="res-code">
-                                <div class="panel-actions">
-                                    <button class="btn btn-secondary btn-sm btn-copy" data-target="code-content">Copy</button>
-                                    <button class="btn btn-secondary btn-sm btn-download-file" data-file="code">Download</button>
+                                <div class="panel-actions flex gap-2">
+                                    <button class="btn-copy text-xs font-semibold text-slate-600 hover:text-primary-600 hover:bg-slate-100 bg-white border border-slate-200 px-2.5 py-1 rounded-md transition dark:bg-white/5 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/10" data-target="code-content">Copy</button>
+                                    <button class="btn-download-file text-xs font-semibold text-slate-600 hover:text-emerald-600 hover:bg-slate-100 bg-white border border-slate-200 px-2.5 py-1 rounded-md transition dark:bg-white/5 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/10" data-file="code">Download</button>
                                 </div>
-                                <pre><code id="code-content" class="language-code"></code></pre>
+                                <pre class="bg-slate-950 border border-slate-900 rounded-lg p-5 mt-8 overflow-x-auto select-all dark:bg-black dark:border-white/5"><code id="code-content" class="font-mono text-xs text-slate-300"></code></pre>
                             </div>
                             
                             <!-- Unit Tests -->
                             <div class="res-panel" id="res-tests">
-                                <div class="panel-actions">
-                                    <button class="btn btn-secondary btn-sm btn-copy" data-target="tests-content">Copy</button>
-                                    <button class="btn btn-secondary btn-sm btn-download-file" data-file="tests">Download</button>
+                                <div class="panel-actions flex gap-2">
+                                    <button class="btn-copy text-xs font-semibold text-slate-600 hover:text-primary-600 hover:bg-slate-100 bg-white border border-slate-200 px-2.5 py-1 rounded-md transition dark:bg-white/5 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/10" data-target="tests-content">Copy</button>
+                                    <button class="btn-download-file text-xs font-semibold text-slate-600 hover:text-emerald-600 hover:bg-slate-100 bg-white border border-slate-200 px-2.5 py-1 rounded-md transition dark:bg-white/5 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/10" data-file="tests">Download</button>
                                 </div>
-                                <pre><code id="tests-content" class="language-code"></code></pre>
+                                <pre class="bg-slate-950 border border-slate-900 rounded-lg p-5 mt-8 overflow-x-auto select-all dark:bg-black dark:border-white/5"><code id="tests-content" class="font-mono text-xs text-slate-300"></code></pre>
                             </div>
                             
                             <!-- Usage Guide -->
                             <div class="res-panel" id="res-readme">
-                                <div class="panel-actions">
-                                    <button class="btn btn-secondary btn-sm btn-copy" data-target="readme-content">Copy</button>
-                                    <button class="btn btn-secondary btn-sm btn-download-file" data-file="readme">Download</button>
+                                <div class="panel-actions flex gap-2">
+                                    <button class="btn-copy text-xs font-semibold text-slate-600 hover:text-primary-600 hover:bg-slate-100 bg-white border border-slate-200 px-2.5 py-1 rounded-md transition dark:bg-white/5 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/10" data-target="readme-content">Copy</button>
+                                    <button class="btn-download-file text-xs font-semibold text-slate-600 hover:text-emerald-600 hover:bg-slate-100 bg-white border border-slate-200 px-2.5 py-1 rounded-md transition dark:bg-white/5 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/10" data-file="readme">Download</button>
                                 </div>
-                                <pre><code id="readme-content" class="language-code"></code></pre>
+                                <pre class="bg-slate-950 border border-slate-900 rounded-lg p-5 mt-8 overflow-x-auto select-all dark:bg-black dark:border-white/5"><code id="readme-content" class="font-mono text-xs text-slate-300"></code></pre>
                             </div>
                         </div>
                     </div>
-                </section>
+                </div>
+
             </div>
         </main>
     </div>
+
+    <!-- Customized Overlay Dialogue Modal (Strictly avoids alerts and confirms) -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-all duration-200 dark:bg-black/60 dark:backdrop-blur-md">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden border border-slate-200 transform scale-95 transition-transform duration-200 dark:bg-[#0d1423] dark:border-white/10 dark:shadow-[0_20px_50px_rgba(0,0,0,0.7)]" id="confirm-card">
+            <div class="p-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 flex-shrink-0 dark:bg-amber-950/30 dark:text-amber-400">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </div>
+                    <h4 class="font-heading font-extrabold text-base text-slate-900 dark:text-white" id="confirm-title">Notification</h4>
+                </div>
+                <p class="text-sm text-slate-500 mt-3 ml-1 dark:text-slate-400" id="confirm-message">Message text mapping target.</p>
+            </div>
+            <div class="bg-slate-50 px-6 py-4 flex justify-end gap-2 border-t border-slate-100 dark:bg-[#080c18]/60 dark:border-white/5">
+                <button id="btn-confirm-cancel" class="text-xs font-bold text-slate-600 hover:bg-slate-100 px-3.5 py-2.5 rounded-lg transition duration-150 dark:text-slate-400 dark:hover:bg-white/5">Cancel</button>
+                <button id="btn-confirm-agree" class="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3.5 py-2.5 rounded-lg transition duration-150 dark:bg-indigo-500 dark:hover:bg-indigo-600">Clear Storage</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Interface Controller implementation Layer -->
     <script src="app.js"></script>
 </body>
 </html>
