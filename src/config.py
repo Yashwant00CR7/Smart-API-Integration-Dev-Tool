@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 7860
     reload: bool = False
+    access_log: bool = False
     
     # Environment config
     model_config = SettingsConfigDict(

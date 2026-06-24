@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -49,6 +49,11 @@ def health_check():
             "ollama_base_url": settings.ollama_base_url
         }
     }
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    """Handles browser favicon requests with 204 No Content to prevent console 404 log littering."""
+    return Response(status_code=204)
 
 @app.post("/api/analyze")
 async def analyze_api(request: AnalyzeRequest):

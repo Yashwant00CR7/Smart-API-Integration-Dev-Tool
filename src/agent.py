@@ -40,18 +40,20 @@ class APIIntegrationOutput(BaseModel):
     tests: str = Field(..., description="The unit tests code suite designed to test the client wrapper class.")
     readme: str = Field(..., description="Markdown usage instructions and setup guide for the wrapper.")
 
-def parse_ollama_json(response_text: str) -> Dict[str, str]:
+def parse_json_response(response_text: str, provider: str = "model") -> Dict[str, Any]:
     """
-    Defensively extracts and parses a JSON object from Ollama's response.
+    Defensively extracts and parses a JSON object from a model's response.
     """
+    cleaned_text = response_text.strip()
+    
     # 1. Try parsing directly
     try:
-        return json.loads(response_text.strip())
+        return json.loads(cleaned_text)
     except json.JSONDecodeError:
         pass
     
     # 2. Try extracting markdown json block
-    match = re.search(r"```json\s*(.*?)\s*```", response_text, re.DOTALL)
+    match = re.search(r"```json\s*(.*?)\s*```", cleaned_text, re.DOTALL)
     if match:
         try:
             return json.loads(match.group(1).strip())
@@ -59,15 +61,25 @@ def parse_ollama_json(response_text: str) -> Dict[str, str]:
             pass
             
     # 3. Try finding the first '{' and last '}'
-    start = response_text.find('{')
-    end = response_text.rfind('}')
+    start = cleaned_text.find('{')
+    end = cleaned_text.rfind('}')
     if start != -1 and end != -1:
         try:
-            return json.loads(response_text[start:end+1].strip())
+            return json.loads(cleaned_text[start:end+1].strip())
         except json.JSONDecodeError:
             pass
             
-    raise ValueError(f"Failed to parse JSON response from Ollama model. Raw response:\n{response_text}")
+    # Check if the JSON appears to be truncated (e.g. no closing '}' at the end of the text)
+    is_truncated = False
+    if cleaned_text and not cleaned_text.endswith('}'):
+        is_truncated = True
+        
+    error_msg = f"Failed to parse JSON response from {provider}."
+    if is_truncated:
+        error_msg += " The response appears to be truncated (it does not end with a closing brace '}')."
+    
+    error_msg += f" Raw response:\n{response_text}"
+    raise ValueError(error_msg)
 
 LANGUAGE_SPECS = {
     "python": {
@@ -239,7 +251,8 @@ INSTRUCTIONS:
             "format": "json",
             "stream": False,
             "options": {
-                "temperature": 0.1
+                "temperature": 0.1,
+                "num_predict": 4096
             }
         }
         
@@ -248,7 +261,14 @@ INSTRUCTIONS:
         result = response.json()
         response_text = result.get("response", "")
         
-        parsed = parse_ollama_json(response_text)
+        if not result.get("done", True):
+            raise ValueError(
+                "Ollama generation was truncated (done is false). "
+                "The model ran out of token prediction space before completing the JSON wrapper. "
+                "Try reducing the size of your input documentation or choosing a larger context/predict limit."
+            )
+            
+        parsed = parse_json_response(response_text, "Ollama model")
         return {
             "overview": parsed.get("overview", ""),
             "endpoints": parsed.get("endpoints", ""),
@@ -266,7 +286,17 @@ INSTRUCTIONS:
             "Content-Type": "application/json"
         }
         
-        prompt_with_format = prompt + "\n\nCRITICAL: Return ONLY a valid JSON object matching this schema:\n" + json.dumps({
+        is_reasoning_model = "qwen" in groq_model.lower() or "deepseek" in groq_model.lower()
+        
+        # Instruct reasoning models to be concise in their thinking/reasoning process to avoid output token limits
+        thinking_instruction = ""
+        if is_reasoning_model:
+            thinking_instruction = (
+                "\nNOTE: Since you are a reasoning model, keep your thinking process concise. "
+                "Ensure that the final JSON object is completely generated and not truncated due to output token limits."
+            )
+            
+        prompt_with_format = prompt + thinking_instruction + "\n\nCRITICAL: Return ONLY a valid JSON object matching this schema:\n" + json.dumps({
             "overview": "string (Overview of auth methods, integration path recommendation)",
             "endpoints": "string (List of endpoints, request payloads, headers, query parameters)",
             "code": "string (The complete client wrapper code)",
@@ -279,16 +309,30 @@ INSTRUCTIONS:
             "messages": [
                 {"role": "user", "content": prompt_with_format}
             ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.1
+            "temperature": 0.1,
+            "max_tokens": 4096
         }
+        
+        # Qwen and reasoning models do not support JSON Object mode on Groq when thinking/reasoning is enabled
+        if not is_reasoning_model:
+            payload["response_format"] = {"type": "json_object"}
         
         response = requests.post(url, json=payload, headers=headers, timeout=120)
         response.raise_for_status()
         result = response.json()
-        response_text = result["choices"][0]["message"]["content"]
         
-        parsed = parse_ollama_json(response_text)
+        choice = result["choices"][0]
+        response_text = choice["message"]["content"]
+        finish_reason = choice.get("finish_reason")
+        
+        if finish_reason == "length":
+            raise ValueError(
+                f"Groq ({groq_model}) generation was truncated (finish_reason: length). "
+                f"The model ran out of output tokens before completing the JSON wrapper. "
+                f"Try reducing the size of your input documentation or using a model with a larger output limit."
+            )
+            
+        parsed = parse_json_response(response_text, f"Groq model ({groq_model})")
         return {
             "overview": parsed.get("overview", ""),
             "endpoints": parsed.get("endpoints", ""),

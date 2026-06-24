@@ -25,7 +25,7 @@ def main():
     else:
         # Launch FastAPI server
         print(f"Starting FastAPI Web Server on http://{settings.host}:{settings.port}", file=sys.stderr)
-        uvicorn.run("src.app:app", host=settings.host, port=settings.port, reload=settings.reload)
+        uvicorn.run("src.app:app", host=settings.host, port=settings.port, reload=settings.reload, access_log=settings.access_log)
 
 if __name__ == "__main__":
     main()
