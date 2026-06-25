@@ -1,6 +1,8 @@
 import os
 import re
 import json
+import time
+import logging
 import requests
 from typing import Dict, Any, Optional
 from typing_extensions import TypedDict
@@ -12,6 +14,53 @@ from langgraph.graph import StateGraph, END
 
 from src.config import settings
 from src.services.executor import run_tests
+
+logger = logging.getLogger(__name__)
+
+def retry_api_call(func, *args, max_attempts=5, initial_wait=2, backoff_factor=2, **kwargs):
+    """
+    Retries an API call with exponential backoff for transient errors (429, 5xx, or specific API errors).
+    """
+    attempt = 0
+    wait = initial_wait
+    while True:
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            attempt += 1
+            if attempt >= max_attempts:
+                raise e
+            
+            # Check if the error is retryable
+            err_msg = str(e).lower()
+            is_retryable = False
+            
+            # 1. Check Gemini API errors
+            if "genai" in type(e).__module__ or "APIError" in type(e).__name__:
+                status_code = getattr(e, "code", None) or getattr(e, "status", None)
+                if status_code in (429, 500, 502, 503, 504) or any(msg in err_msg for msg in ["503", "429", "temporary", "quota", "rate limit", "overloaded", "unavailable"]):
+                    is_retryable = True
+            
+            # 2. Check requests errors (Groq, OpenRouter, Ollama)
+            elif isinstance(e, requests.RequestException):
+                status_code = None
+                if e.response is not None:
+                    status_code = e.response.status_code
+                if status_code in (429, 500, 502, 503, 504) or any(msg in err_msg for msg in ["503", "429", "rate limit", "overloaded"]):
+                    is_retryable = True
+                elif isinstance(e, (requests.exceptions.ConnectionError, requests.exceptions.Timeout)):
+                    is_retryable = True
+            
+            # 3. General check
+            elif any(msg in err_msg for msg in ["rate limit", "429", "503", "502", "500", "overloaded", "unavailable", "timeout"]):
+                is_retryable = True
+                
+            if not is_retryable:
+                raise e
+                
+            print(f"[Agent] API call failed with {type(e).__name__}: {e}. Retrying in {wait}s (attempt {attempt}/{max_attempts})...")
+            time.sleep(wait)
+            wait *= backoff_factor
 
 # State definition
 class AgentState(TypedDict):
@@ -126,7 +175,8 @@ DOCUMENTATION CONTENT:
             raise ValueError("Google Gemini API Key is required but not provided. Please supply one in your configuration or UI.")
         
         client = genai.Client(api_key=g_key)
-        response = client.models.generate_content(
+        response = retry_api_call(
+            client.models.generate_content,
             model=g_model,
             contents=validation_prompt,
             config=types.GenerateContentConfig(
@@ -166,7 +216,7 @@ DOCUMENTATION CONTENT:
             "response_format": {"type": "json_object"}
         }
         
-        response = requests.post(url, json=payload, headers=headers, timeout=60)
+        response = retry_api_call(requests.post, url, json=payload, headers=headers, timeout=60)
         response.raise_for_status()
         result = response.json()
         response_text = result["choices"][0]["message"]["content"]
@@ -193,7 +243,7 @@ DOCUMENTATION CONTENT:
             }
         }
         
-        response = requests.post(url, json=payload, timeout=60)
+        response = retry_api_call(requests.post, url, json=payload, timeout=60)
         response.raise_for_status()
         result = response.json()
         response_text = result.get("response", "")
@@ -230,7 +280,7 @@ DOCUMENTATION CONTENT:
             "max_tokens": 1000
         }
         
-        response = requests.post(url, json=payload, headers=headers, timeout=60)
+        response = retry_api_call(requests.post, url, json=payload, headers=headers, timeout=60)
         response.raise_for_status()
         result = response.json()
         response_text = result["choices"][0]["message"]["content"]
@@ -257,7 +307,8 @@ LANGUAGE_SPECS = {
             "Ensure transient network errors (such as connection timeouts and connection errors) are included in the retrier's retry-conditions alongside rate limits (429) and server errors (5xx).",
             "Use tenacity.Retrying as a dynamic context wrapper directly (e.g., `retrier = Retrying(...)` and `return retrier(lambda: ...)` or similar) rather than defining dynamic inner decorator functions.",
             "Ensure exception regex string patterns in tests (e.g., `assertRaisesRegex`) exactly match the formatting of messages raised by the client wrapper class (do not assume extra prefixes or text unless present in both).",
-            "When mocking `requests.exceptions.HTTPError` in unit tests, always initialize it with a descriptive message string matching the HTTP status (e.g., `requests.exceptions.HTTPError('500 Server Error...', response=mock_response)`) so that `str(e)` does not return empty."
+            "When mocking `requests.exceptions.HTTPError` in unit tests, always initialize it with a descriptive message string matching the HTTP status (e.g., `requests.exceptions.HTTPError('500 Server Error...', response=mock_response)`) so that `str(e)` does not return empty.",
+            "Wrap any JSON parsing (e.g., `response.json()`) in a try-except block to catch `ValueError` / `json.JSONDecodeError` and raise your custom API exception (e.g., ChargesAPIError), ensuring JSON parsing errors do not bubble up as raw ValueErrors."
         ]
     },
     "javascript": {
@@ -270,7 +321,8 @@ LANGUAGE_SPECS = {
             "DO NOT require or import any third-party npm packages (such as node-fetch, loglevel, axios, lodash, etc.) in either the client or test script. Use only standard Node.js built-in modules (e.g. assert, fs, path).",
             "DO NOT use Node's built-in http or https modules to perform network requests. You MUST use the global fetch API (fetch() or globalThis.fetch()) directly. DO NOT require or import fetch; it is globally available in Node.js v18+.",
             "DO NOT use global test functions or runners like describe(), it(), test(), before(), or after(). Write the tests inside a single top-level async function execution harness `async function runTests() { ... } runTests();`. Wrap all assertions inside a single try/catch block. If any error or assertion fails, log the error and call `process.exit(1)`. If all tests pass, call `process.exit(0)`. Ensure every asynchronous client call is awaited inside this block.",
-            "To mock HTTP responses, assign a mock function directly to globalThis.fetch inside the test script instead of using external mock packages."
+            "To mock HTTP responses, assign a mock function directly to globalThis.fetch inside the test script instead of using external mock packages.",
+            "Wrap any JSON parsing (e.g., `await response.json()`) in a try-catch block to handle syntax errors, throwing a custom descriptive error."
         ]
     },
     "typescript": {
@@ -282,7 +334,8 @@ LANGUAGE_SPECS = {
             "DO NOT import or require any third-party npm packages (such as node-fetch, loglevel, axios, etc.) in the client or test script.",
             "DO NOT use Node's built-in http or https modules to perform network requests. You MUST use the global fetch API (fetch() or globalThis.fetch()) directly. DO NOT import fetch; it is globally available in Node.js v18+.",
             "DO NOT use global test runner functions like describe(), it(), test(), before(), or after(). Write tests inside a single top-level `async function runTests() { ... } runTests();` harness using the built-in assert module, catching errors and exiting with `process.exit(1)` on failure, and exiting with `process.exit(0)` on success. Ensure all asynchronous calls are awaited.",
-            "To mock HTTP responses, assign a mock function directly to globalThis.fetch inside the test script."
+            "To mock HTTP responses, assign a mock function directly to globalThis.fetch inside the test script.",
+            "Wrap any JSON parsing (e.g., `await response.json()`) in a try-catch block to handle syntax errors, throwing a custom descriptive error."
         ]
     },
     "go": {
@@ -413,7 +466,8 @@ INSTRUCTIONS:
             
         gemini_model = state.get("gemini_model") or "gemini-2.5-flash"
         client = genai.Client(api_key=gemini_key)
-        response = client.models.generate_content(
+        response = retry_api_call(
+            client.models.generate_content,
             model=gemini_model,
             contents=prompt,
             config=types.GenerateContentConfig(
@@ -453,7 +507,7 @@ INSTRUCTIONS:
             }
         }
         
-        response = requests.post(url, json=payload, timeout=120)
+        response = retry_api_call(requests.post, url, json=payload, timeout=120)
         response.raise_for_status()
         result = response.json()
         response_text = result.get("response", "")
@@ -514,7 +568,7 @@ INSTRUCTIONS:
         if not is_reasoning_model:
             payload["response_format"] = {"type": "json_object"}
         
-        response = requests.post(url, json=payload, headers=headers, timeout=120)
+        response = retry_api_call(requests.post, url, json=payload, headers=headers, timeout=120)
         response.raise_for_status()
         result = response.json()
         
@@ -566,7 +620,7 @@ INSTRUCTIONS:
             "max_tokens": 4096
         }
         
-        response = requests.post(url, json=payload, headers=headers, timeout=120)
+        response = retry_api_call(requests.post, url, json=payload, headers=headers, timeout=120)
         response.raise_for_status()
         result = response.json()
         

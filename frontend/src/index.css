@@ -162,3 +162,21 @@
   z-index: 50 !important;
   border-radius: 12px !important;
 }
+
+/* Light theme overrides for markdown rendering */
+.markdown-light p,
+.markdown-light li {
+  color: #374151; /* dark gray */
+}
+
+.markdown-light h1,
+.markdown-light h2,
+.markdown-light h3 {
+  color: #09090b; /* black */
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.markdown-light code {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #18181b;
+}

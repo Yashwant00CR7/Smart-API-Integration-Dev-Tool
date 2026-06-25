@@ -37,17 +37,67 @@ const languagePlaceholders: Record<string, string> = {
 };
 
 const defaultSystemDiagnostics = [
-  { text: "[Diagnostic] Activating local container runtimes checks...", type: "system" as const },
-  { text: "[Diagnostic] Python v3.12: Found (/usr/bin/python3)", type: "success" as const },
-  { text: "[Diagnostic] Node.js v20.11: Found (/usr/bin/node)", type: "success" as const },
-  { text: "[Diagnostic] Go compiler v1.21: Found (/usr/local/go/bin/go)", type: "success" as const },
-  { text: "[Diagnostic] Java SDK v21: Found (/usr/bin/javac)", type: "success" as const },
-  { text: "[Diagnostic] All compiler sandboxes verified. Workspace fully online.", type: "success" as const }
+  { text: "[System] Virtual telemetry compiler online. Awaiting runtime task configurations...", type: "system" as const },
+  { text: "[02:15:38.709] [Diagnostic] Activating local container runtimes checks...", type: "system" as const },
+  { text: "[02:15:38.966] [Diagnostic] Python v3.12: Found (/usr/bin/python3)", type: "success" as const },
+  { text: "[02:15:39.076] [Diagnostic] Node.js v20.11: Found (/usr/bin/node)", type: "success" as const },
+  { text: "[02:15:39.186] [Diagnostic] Go compiler v1.21: Found (/usr/local/go/bin/go)", type: "success" as const },
+  { text: "[02:15:39.291] [Diagnostic] Java SDK v21: Found (/usr/bin/javac)", type: "success" as const },
+  { text: "[02:15:39.497] [Diagnostic] All compiler sandboxes verified. Workspace fully online.", type: "success" as const }
 ];
+
+const renderLogText = (logText: string, logType: string) => {
+  const timestampRegex = /^\[\d{2}:\d{2}:\d{2}\.\d{3}\]/;
+  let tempText = logText;
+  let timestampSpan: React.ReactNode = null;
+  let tagSpan: React.ReactNode = null;
+  
+  const timestampMatch = tempText.match(timestampRegex);
+  if (timestampMatch) {
+    timestampSpan = <span className="text-[#64748b] mr-1.5">{timestampMatch[0]}</span>;
+    tempText = tempText.replace(timestampRegex, '').trim();
+  }
+  
+  if (tempText.startsWith('[System]')) {
+    tagSpan = <span className="text-zinc-400 font-bold mr-1.5">[System]</span>;
+    tempText = tempText.replace('[System]', '').trim();
+  } else if (tempText.startsWith('[Diagnostic]')) {
+    tagSpan = <span className="text-emerald-400 font-bold mr-1.5">[Diagnostic]</span>;
+    tempText = tempText.replace('[Diagnostic]', '').trim();
+  }
+  
+  let contentColor = 'text-zinc-350';
+  if (logType === 'success') {
+    contentColor = 'text-emerald-400';
+  } else if (logType === 'error') {
+    contentColor = 'text-red-400';
+  } else if (logType === 'sandbox') {
+    contentColor = 'text-amber-400';
+  } else if (logType === 'scraper') {
+    contentColor = 'text-zinc-300';
+  } else if (logType === 'agent') {
+    contentColor = 'text-zinc-300';
+  }
+  
+  return (
+    <div className="flex items-center flex-wrap font-mono text-[11px] leading-relaxed select-text">
+      {timestampSpan}
+      {tagSpan}
+      <span className={contentColor}>{tempText}</span>
+    </div>
+  );
+};
 
 export default function App() {
   // Stateful View Router ('landing' | 'workspace')
   const [view, setView] = useState<'landing' | 'workspace'>('landing');
+
+  // SPA History Routing Helper
+  const navigateTo = (newView: 'landing' | 'workspace') => {
+    setView(newView);
+    const url = newView === 'workspace' ? '?view=workspace' : window.location.pathname;
+    window.history.pushState({ view: newView }, '', url);
+  };
 
   // Developer Profile Dossier Tab State
   const [activeDossierTab, setActiveDossierTab] = useState<'json' | 'sh'>('json');
@@ -57,6 +107,8 @@ export default function App() {
 
   // Settings Drawer Toggle
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+
 
   // Form Inputs
   const [selectedSource, setSelectedSource] = useState<'url' | 'text'>('url');
@@ -203,9 +255,28 @@ export default function App() {
   useEffect(() => {
     // Check URL parameters for direct workspace loading
     const params = new URLSearchParams(window.location.search);
-    if (params.get('workspace') === 'true') {
+    if (params.get('workspace') === 'true' || params.get('view') === 'workspace') {
       setView('workspace');
     }
+
+    // Listen to popstate for SPA routing
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.view) {
+        setView(event.state.view);
+      } else {
+        const p = new URLSearchParams(window.location.search);
+        if (p.get('workspace') === 'true' || p.get('view') === 'workspace') {
+          setView('workspace');
+        } else {
+          setView('landing');
+        }
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+
+    // Initialize initial state in history so popping back works
+    const initialView = (params.get('workspace') === 'true' || params.get('view') === 'workspace') ? 'workspace' : 'landing';
+    window.history.replaceState({ view: initialView }, '', window.location.search || '/');
 
     // Load credentials
     setGeminiKey(sessionStorage.getItem('credentials_gemini_key') || '');
@@ -242,7 +313,11 @@ export default function App() {
     // Check backend health
     checkBackendHealth();
     const interval = setInterval(checkBackendHealth, 15000);
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   // Sync scroll on logs update
@@ -493,7 +568,21 @@ export default function App() {
       });
 
       if (!res.ok) {
-        throw new Error(`Execution error. Status code response: ${res.status}`);
+        let errMsg = `Status code response: ${res.status}`;
+        try {
+          const errJson = await res.json();
+          if (errJson && errJson.detail) {
+            errMsg = errJson.detail;
+          } else if (errJson && errJson.message) {
+            errMsg = errJson.message;
+          }
+        } catch (_) {
+          try {
+            const errText = await res.text();
+            if (errText) errMsg = errText.substring(0, 200);
+          } catch (_) {}
+        }
+        throw new Error(`Execution error. ${errMsg}`);
       }
 
       const responseData = await res.json();
@@ -718,7 +807,7 @@ export default function App() {
     html = html.replace(/^### (.*?)$/gm, '<h3 class="text-sm font-bold text-white mt-4 mb-2">$1</h3>');
     html = html.replace(/^## (.*?)$/gm, '<h2 class="text-base font-bold text-white mt-6 mb-3 border-b border-white/10 pb-1.5">$1</h2>');
     html = html.replace(/^# (.*?)$/gm, '<h1 class="text-lg font-extrabold text-white mt-8 mb-4">$1</h1>');
-    html = html.replace(/^\s*-\s+(.*?)$/gm, '<li class="text-slate-300 list-disc list-inside ml-4 py-0.5">$1</li>');
+    html = html.replace(/^\s*-\s+(.*?)$/gm, '<li class="text-slate-350 list-disc list-inside ml-4 py-0.5">$1</li>');
     html = html.replace(/`([^`\n]+)`/g, '<code class="bg-white/10 text-white px-1.5 py-0.5 rounded font-mono text-xs font-semibold">$1</code>');
     html = html.replace(/\*\*([\s\S]*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
     
@@ -743,16 +832,16 @@ export default function App() {
 
     const getPulseColor = (nodeId: string) => {
       if (pipelineStep === nodeId) {
-        if (nodeId === 'healing') return 'stroke-red-500 fill-red-950/20';
+        if (nodeId === 'healing') return 'stroke-red-550 fill-red-950/20';
         if (nodeId === 'success') return 'stroke-emerald-500 fill-emerald-950/20';
-        return 'stroke-white fill-white/10';
+        return 'stroke-white fill-white/15';
       }
       const isPast = nodes.findIndex(n => n.id === pipelineStep) > nodes.findIndex(n => n.id === nodeId);
       if (isPast && pipelineStep !== 'error') {
-        return 'stroke-emerald-500 fill-emerald-950/10';
+        return 'stroke-emerald-500 fill-emerald-950/20';
       }
-      if (pipelineStep === 'error' && nodeId === pipelineStep) return 'stroke-red-500 fill-red-950/10';
-      return 'stroke-white/10 fill-white/5';
+      if (pipelineStep === 'error' && nodeId === pipelineStep) return 'stroke-red-555 fill-red-950/20';
+      return 'stroke-white/10 fill-white/[0.02]';
     };
 
     const getTextColor = (nodeId: string) => {
@@ -762,13 +851,13 @@ export default function App() {
         return 'text-white font-bold';
       }
       const isPast = nodes.findIndex(n => n.id === pipelineStep) > nodes.findIndex(n => n.id === nodeId);
-      if (isPast) return 'text-emerald-500';
+      if (isPast) return 'text-emerald-400';
       return 'text-slate-500';
     };
 
     return (
-      <div className="flex flex-col gap-2 p-3 bg-[#080808] border border-white/5 rounded-xl">
-        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">LangGraph Agent Loop Visualizer</span>
+      <div className="flex flex-col gap-2 p-3 bg-[#0a0c10]/40 border border-white/10 rounded-xl">
+        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">LangGraph Agent Loop Visualizer</span>
         <div className="flex items-center justify-between gap-1 overflow-x-auto py-2">
           {nodes.map((node, idx) => {
             const isActive = pipelineStep === node.id;
@@ -776,7 +865,7 @@ export default function App() {
             return (
               <React.Fragment key={node.id}>
                 <div className="flex flex-col items-center gap-1.5 min-w-[70px]">
-                  <div className={`relative w-9 h-9 rounded-full border flex items-center justify-center transition-all duration-300 ${getPulseColor(node.id)} ${isActive ? 'animate-pulse scale-105 shadow-[0_0_12px_rgba(37,99,235,0.2)]' : ''}`}>
+                  <div className={`relative w-9 h-9 rounded-full border flex items-center justify-center transition-all duration-300 ${getPulseColor(node.id)} ${isActive ? 'animate-pulse scale-105 shadow-[0_0_12px_rgba(255,255,255,0.05)]' : ''}`}>
                     {isActive ? (
                       <Sparkles className="w-4 h-4 text-white animate-spin" />
                     ) : isPast ? (
@@ -788,8 +877,8 @@ export default function App() {
                   <span className={`text-[10px] text-center ${getTextColor(node.id)}`}>{node.label}</span>
                 </div>
                 {idx < nodes.length - 1 && (
-                  <div className="flex-grow h-0.5 min-w-[15px] bg-white/5 relative">
-                    {isPast && <div className="absolute inset-0 bg-emerald-500 transition-all duration-500" style={{ width: '100%' }} />}
+                  <div className="flex-grow h-0.5 min-w-[15px] bg-white/10 relative">
+                    {isPast && <div className="absolute inset-0 bg-emerald-400 transition-all duration-500" style={{ width: '100%' }} />}
                     {isActive && <div className="absolute inset-0 bg-white animate-pulse" style={{ width: '100%' }} />}
                   </div>
                 )}
@@ -848,7 +937,7 @@ export default function App() {
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
               <button
-                onClick={() => setView('workspace')}
+                onClick={() => navigateTo('workspace')}
                 className="text-xs font-bold bg-white hover:bg-zinc-200 text-black py-2 px-4 rounded-full transition shadow-md shadow-white/5 active:scale-[0.98] cursor-pointer"
               >
                 Console Workspace
@@ -875,7 +964,7 @@ export default function App() {
 
           <div className="flex flex-col sm:flex-row gap-4 mt-2 justify-center">
             <button
-              onClick={() => setView('workspace')}
+              onClick={() => navigateTo('workspace')}
               className="inline-flex items-center gap-2 font-bold text-sm bg-white hover:bg-zinc-200 text-black py-3 px-6 rounded-lg transition shadow-lg shadow-white/5 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
             >
               Launch Workspace Console
@@ -1300,7 +1389,7 @@ Payload Parameters:
                   </ul>
                 </div>
                 <button 
-                  onClick={() => setView('workspace')}
+                  onClick={() => navigateTo('workspace')}
                   className="w-full text-center text-xs font-bold py-3 border border-white/10 hover:border-white/20 rounded-xl bg-white/5 hover:text-white transition mt-8 cursor-pointer"
                 >
                   Configure Local Mode
@@ -1610,7 +1699,7 @@ Payload Parameters:
                   </li>
                   <li>
                     <button 
-                      onClick={() => setView('workspace')} 
+                      onClick={() => navigateTo('workspace')} 
                       className="hover:text-white transition cursor-pointer text-left"
                     >
                       Workspace Console
@@ -1706,6 +1795,11 @@ Payload Parameters:
   // -------------------------------------------------------------
   return (
     <div className="h-screen w-screen bg-[#050505] text-slate-100 font-sans flex flex-col overflow-hidden relative">
+      
+      {/* Ambient background glows */}
+      <div className="absolute top-0 inset-x-0 h-[600px] bg-gradient-to-b from-white/[0.02] via-transparent to-transparent pointer-events-none z-0" />
+      <div className="absolute top-[20vh] -left-40 w-[500px] h-[500px] rounded-full bg-zinc-500/[0.02] blur-[120px] aurora-glow-1 pointer-events-none" />
+      <div className="absolute top-[40vh] -right-40 w-[500px] h-[500px] rounded-full bg-zinc-500/[0.02] blur-[120px] aurora-glow-2 pointer-events-none" />
       
       {/* Settings Drawer overlay */}
       <AnimatePresence>
@@ -1827,41 +1921,45 @@ Payload Parameters:
       </AnimatePresence>
 
       {/* TOP NAVIGATION BAR PANEL */}
-      <nav className="bg-[#090909] px-6 py-3 border-b border-white/5 flex items-center justify-between flex-shrink-0 z-20">
+      <nav className="bg-[#050505]/60 backdrop-blur-md px-6 py-3 border-b border-white/10 flex items-center justify-between flex-shrink-0 z-20 shadow-lg">
         {/* Left section: Breadcrumbs navigation */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setView('landing')}
-            className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow shadow-white/5 hover:scale-105 active:scale-95 transition"
+            onClick={() => navigateTo('landing')}
+            className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow shadow-white/5 hover:scale-105 active:scale-95 transition cursor-pointer"
             title="Return to Homepage"
           >
             <Zap className="w-4 h-4 text-black" />
           </button>
           <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="text-slate-400 hover:text-white cursor-pointer transition" onClick={() => setView('landing')}>smart-api-devtool</span>
-            <span className="text-slate-600">/</span>
-            <span className="text-slate-200 font-semibold font-sans">workspace-console</span>
+            <span className="text-slate-400 hover:text-white cursor-pointer transition" onClick={() => navigateTo('landing')}>smart-api-devtool</span>
+            <span className="text-white/20">/</span>
+            <span className="text-white font-semibold font-sans">workspace-console</span>
           </div>
         </div>
 
         {/* Center section: Compact health status indicator bar */}
-        <div className="hidden md:flex items-center gap-3 bg-white/5 border border-white/5 rounded-full px-3.5 py-1 text-[10px] font-mono text-slate-400">
+        <div className="hidden md:flex items-center gap-3 bg-zinc-950/45 border border-white/5 rounded-full px-3.5 py-1 text-[10px] font-mono text-zinc-400">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           <span>API Node: Active</span>
-          <span className="text-slate-700 font-normal">|</span>
-          <span>Gemini: {backendStatus.online ? 'Ready' : 'Offline'}</span>
-          <span className="text-slate-700 font-normal">|</span>
-          <span>Ollama: Connected</span>
+          <span className="text-white/15 font-normal">|</span>
+          <span>Gemini: <span className={backendStatus.gemini === 'Available' || backendStatus.gemini === 'Connected' ? 'text-emerald-450 font-bold' : 'text-zinc-500'}>{backendStatus.gemini}</span></span>
+          <span className="text-white/15 font-normal">|</span>
+          <span>Groq: <span className={backendStatus.groq === 'Available' || backendStatus.groq === 'Ready' ? 'text-emerald-450 font-bold' : 'text-zinc-500'}>{backendStatus.groq}</span></span>
+          <span className="text-white/15 font-normal">|</span>
+          <span>OpenRouter: <span className={backendStatus.openrouter === 'Available' || backendStatus.openrouter === 'Ready' ? 'text-emerald-450 font-bold' : 'text-zinc-500'}>{backendStatus.openrouter}</span></span>
+          <span className="text-white/15 font-normal">|</span>
+          <span>Ollama: <span className={backendStatus.ollama === 'Connected' ? 'text-emerald-450 font-bold' : 'text-zinc-500'}>{backendStatus.ollama}</span></span>
         </div>
 
         {/* Right section: Sidebar toggle and configuration controls */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={`p-1.5 rounded-lg border transition ${
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
               sidebarOpen 
                 ? 'bg-white/10 border-white/20 text-white' 
-                : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'
+                : 'bg-transparent border-white/10 text-slate-400 hover:text-white hover:bg-white/5'
             }`}
             title="Toggle Cache Sidebar"
           >
@@ -1870,7 +1968,7 @@ Payload Parameters:
 
           <button
             onClick={() => setSettingsOpen(true)}
-            className="p-1.5 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 text-slate-400 hover:text-white transition"
+            className="p-1.5 rounded-lg bg-transparent border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
             title="Open Configuration Settings"
           >
             <Settings className="w-4 h-4" />
@@ -1880,20 +1978,19 @@ Payload Parameters:
 
       {/* DUAL COLS WORKSPACE PORT */}
       <div className="flex-grow flex overflow-hidden relative z-10 min-h-0 w-full">
-        
-        {/* Left Caching Sidebar */}
+                {/* Left Caching Sidebar */}
         {sidebarOpen && (
-          <div className="w-64 bg-[#090909]/60 backdrop-blur-md border-r border-white/5 flex flex-col p-4 flex-shrink-0 select-none">
+          <div className="w-64 bg-[#080808]/40 border-r border-white/10 flex flex-col p-4 flex-shrink-0 select-none backdrop-blur-md">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Saved integrations</span>
-              <span className="text-xs font-semibold px-2 py-0.5 bg-white/5 border border-white/10 rounded text-slate-400">
+              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Saved integrations</span>
+              <span className="text-xs font-semibold px-2 py-0.5 bg-white/5 border border-white/10 rounded text-slate-350">
                 {integrations.length}
               </span>
             </div>
 
             <div className="flex-grow overflow-y-auto mb-4 space-y-2 pr-1">
               {integrations.length === 0 ? (
-                <div className="text-center text-xs text-slate-500 py-12 border border-dashed border-white/5 rounded-xl bg-white/5">
+                <div className="text-center text-xs text-slate-500 py-12 border border-dashed border-white/10 rounded-xl bg-white/[0.01]">
                   No cached integrations
                 </div>
               ) : (
@@ -1903,14 +2000,14 @@ Payload Parameters:
                     onClick={() => handleLoadHistoryRecord(item)}
                     className={`group p-3 rounded-lg border text-left cursor-pointer transition duration-150 flex items-center justify-between gap-3 ${
                       currentIntegration?.id === item.id
-                        ? 'bg-white/10 border-white/20 shadow-sm'
-                        : 'bg-white/5 border-white/5 hover:bg-white/10'
+                        ? 'bg-white/10 border-white/20 text-white shadow-sm'
+                        : 'bg-transparent border-white/5 hover:bg-white/5 text-slate-400'
                     }`}
                   >
                     <div className="min-w-0 flex-grow">
-                      <div className="text-xs font-bold text-white truncate">{item.title}</div>
-                      <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
-                        <span className="px-1 py-0.2 bg-white/10 rounded text-[8px] font-extrabold uppercase text-slate-300">
+                      <div className="text-xs font-bold text-slate-200 truncate">{item.title}</div>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500">
+                        <span className="px-1 py-0.2 bg-white/5 border border-white/10 rounded text-[8px] font-extrabold uppercase text-slate-300">
                           {item.language}
                         </span>
                         <span>{new Date(item.timestamp).toLocaleDateString()}</span>
@@ -1918,7 +2015,7 @@ Payload Parameters:
                     </div>
                     <button
                       onClick={(e) => handleDeleteHistoryRecord(item.id, e)}
-                      className="p-1 text-slate-400 hover:text-red-400 rounded transition opacity-0 group-hover:opacity-100"
+                      className="p-1 text-slate-500 hover:text-red-400 rounded transition opacity-0 group-hover:opacity-100"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -1929,7 +2026,7 @@ Payload Parameters:
 
             <button
               onClick={handleClearAllHistory}
-              className="w-full text-center text-xs font-bold py-2 px-3 border border-white/10 hover:border-red-500/30 rounded-lg hover:text-red-400 bg-white/5 transition"
+              className="w-full text-center text-xs font-bold py-2 px-3 border border-white/10 text-slate-400 bg-white/5 hover:border-red-500/30 hover:text-red-400 rounded-lg transition cursor-pointer"
             >
               Clear Workspace Cache
             </button>
@@ -1938,204 +2035,207 @@ Payload Parameters:
 
         {/* Form Inputs Parameter panel */}
         <div
-          className="flex-shrink-0 flex flex-col p-5 overflow-y-auto border-r border-white/5 bg-[#080808]/40 backdrop-blur-md"
+          className="flex-shrink-0 flex flex-col p-4 overflow-y-auto bg-transparent"
           style={{ width: `${leftWidth}px` }}
         >
-          <div className="mb-4">
-            <h3 className="font-heading font-bold text-sm text-white">Execution Parameters</h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">Specify documentation sources and generator models.</p>
-          </div>
-
-          <form onSubmit={(e) => { e.preventDefault(); handleGeneratePipeline(); }} className="space-y-4">
-            
-            {/* Input Sources Toggle */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Documentation Input Source</label>
-              <div className="flex bg-black/35 p-1 border border-white/5 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => handleSourceTabChange('url')}
-                  className={`flex-grow py-1.5 text-xs font-bold rounded-lg transition ${
-                    selectedSource === 'url' ? 'bg-white/10 text-white shadow' : 'text-slate-500 hover:text-slate-300'
-                  }`}
-                >
-                  Scrape URL
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSourceTabChange('text')}
-                  className={`flex-grow py-1.5 text-xs font-bold rounded-lg transition ${
-                    selectedSource === 'text' ? 'bg-white/10 text-white shadow' : 'text-slate-500 hover:text-slate-300'
-                  }`}
-                >
-                  Raw Markdown
-                </button>
-              </div>
-
-              {selectedSource === 'url' ? (
-                <div className="mt-1">
-                  <input
-                    type="url"
-                    value={apiUrl}
-                    onChange={(e) => setApiUrl(e.target.value)}
-                    placeholder="https://api.stripe.com/docs/v1"
-                    className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
-                  />
-                  <small className="text-[10px] text-slate-500 mt-1 block leading-relaxed">DYNAMIC MARKDOWN PARSER POWERED BY FIRECRAWL.</small>
-                </div>
-              ) : (
-                <div className="mt-1">
-                  <textarea
-                    value={rawDocs}
-                    onChange={(e) => setRawDocs(e.target.value)}
-                    placeholder="# Charges API&#10;POST /v1/charges&#10;Headers: Authorization Bearer"
-                    rows={6}
-                    className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
-                  />
-                  <small className="text-[10px] text-slate-500 mt-1 block leading-relaxed">Direct offline markdown document text fallback.</small>
-                </div>
-              )}
+          <div className="glass-panel rounded-2xl p-6 flex flex-col gap-4 overflow-y-auto h-full text-white shadow-2xl">
+            <div className="border-b border-white/5 pb-4">
+              <h3 className="font-heading font-bold text-lg text-white leading-tight">Execution Configuration</h3>
+              <p className="text-xs text-slate-400 mt-1">Specify core operational attributes.</p>
             </div>
 
-            {/* Target Use Case constraints */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Target Use Case Constraints</label>
-              <textarea
-                value={useCase}
-                onChange={(e) => setUseCase(e.target.value)}
-                placeholder={languagePlaceholders[language]}
-                rows={4}
-                className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
-                required
-              />
-            </div>
-
-            {/* Runtime Language & LLM Selection */}
-            <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={(e) => { e.preventDefault(); handleGeneratePipeline(); }} className="space-y-4">
+              
+              {/* Input Sources Toggle */}
               <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Code Runtime</label>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
-                >
-                  <option value="python">Python (pytest)</option>
-                  <option value="javascript">JavaScript (Node)</option>
-                  <option value="typescript">TypeScript (ts-node)</option>
-                  <option value="go">Go (testing)</option>
-                  <option value="java">Java (JUnit)</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Model Provider</label>
-                <select
-                  value={modelProvider}
-                  onChange={(e) => setModelProvider(e.target.value)}
-                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
-                >
-                  <option value="gemini">Google Gemini</option>
-                  <option value="ollama">Ollama (Local)</option>
-                  <option value="groq">Groq</option>
-                  <option value="openrouter">OpenRouter</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Google Gemini Model Selector */}
-            {modelProvider === 'gemini' && (
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gemini Tier Selection</label>
-                <select
-                  value={geminiModel}
-                  onChange={(e) => setGeminiModel(e.target.value)}
-                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
-                >
-                  <option value="gemini-2.5-flash">Gemini 2.5 Flash (Default)</option>
-                  <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
-                  <option value="gemini-2.5-pro">Gemini 2.5 Pro (Advanced Coding)</option>
-                  <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite</option>
-                  <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Preview)</option>
-                  <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
-                </select>
-              </div>
-            )}
-
-            {/* Groq Model Selector */}
-            {modelProvider === 'groq' && (
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Groq Inference Core</label>
-                <select
-                  value={groqModel}
-                  onChange={(e) => setGroqModel(e.target.value)}
-                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
-                >
-                  <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
-                  <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
-                  <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout (Preview)</option>
-                </select>
-              </div>
-            )}
-
-            {/* OpenRouter Model Selector */}
-            {modelProvider === 'openrouter' && (
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">OpenRouter Target Model</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Documentation Source System</label>
+                <div className="flex bg-[#050505]/60 p-1 border border-white/10 rounded-xl">
                   <button
                     type="button"
-                    onClick={() => setSettingsOpen(true)}
-                    className="text-[9px] text-white hover:text-zinc-300 uppercase font-semibold"
+                    onClick={() => handleSourceTabChange('url')}
+                    className={`flex-grow py-1.5 text-xs font-bold rounded-lg transition cursor-pointer ${
+                      selectedSource === 'url' ? 'bg-white text-black shadow-md border border-white/5 font-extrabold' : 'text-slate-400 hover:text-white'
+                    }`}
                   >
-                    + Add Model ID
+                    Scrape Documentation URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSourceTabChange('text')}
+                    className={`flex-grow py-1.5 text-xs font-bold rounded-lg transition cursor-pointer ${
+                      selectedSource === 'text' ? 'bg-white text-black shadow-md border border-white/5 font-extrabold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Raw Docs Markdown
                   </button>
                 </div>
-                <select
-                  value={openrouterModel}
-                  onChange={(e) => setOpenrouterModel(e.target.value)}
-                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
-                >
-                  {openrouterCustomModels.map(modelId => (
-                    <option key={modelId} value={modelId}>{modelId}</option>
-                  ))}
-                </select>
+
+                {selectedSource === 'url' ? (
+                  <div className="mt-1">
+                    <input
+                      type="url"
+                      value={apiUrl}
+                      onChange={(e) => setApiUrl(e.target.value)}
+                      placeholder="https://api.stripe.com/docs/v1"
+                      className="w-full bg-[#0a0c10]/80 border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:bg-[#0d0f15] focus:border-white/30 focus:ring-1 focus:ring-white/20"
+                    />
+                    <small className="text-[10px] text-slate-500 mt-1 block leading-relaxed">System relies on Cloud Firecrawl to scrape target specifications dynamically.</small>
+                  </div>
+                ) : (
+                  <div className="mt-1">
+                    <textarea
+                      value={rawDocs}
+                      onChange={(e) => setRawDocs(e.target.value)}
+                      placeholder="# Charges API&#10;POST /v1/charges&#10;Headers: Authorization Bearer"
+                      rows={6}
+                      className="w-full bg-[#0a0c10]/80 border border-white/10 rounded-lg py-2 px-3 text-xs font-mono text-white placeholder-slate-650 focus:outline-none focus:bg-[#0d0f15] focus:border-white/30 focus:ring-1 focus:ring-white/20"
+                    />
+                    <small className="text-[10px] text-slate-500 mt-1 block leading-relaxed">Direct offline markdown document text fallback.</small>
+                  </div>
+                )}
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={isGenerating}
-              className="w-full bg-white hover:bg-zinc-200 text-black text-xs font-bold py-3 px-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 relative shadow-lg shadow-white/5"
-            >
-              {isGenerating ? (
-                <>
-                  <span>Compiling Deliverables...</span>
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin absolute right-4" />
-                </>
-              ) : (
-                <>
-                  <Play className="w-3.5 h-3.5" />
-                  <span>Execute Self-Healing Generator</span>
-                </>
+              {/* Target Use Case constraints */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Target Use Case Constraints</label>
+                <textarea
+                  value={useCase}
+                  onChange={(e) => setUseCase(e.target.value)}
+                  placeholder={languagePlaceholders[language]}
+                  rows={4}
+                  className="w-full bg-[#0a0c10]/80 border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:bg-[#0d0f15] focus:border-white/30 focus:ring-1 focus:ring-white/20"
+                  required
+                />
+              </div>
+
+              {/* Runtime Language & LLM Selection */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Code Runtime</label>
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="w-full bg-[#0a0c10]/80 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:bg-[#0d0f15] focus:border-white/30"
+                  >
+                    <option value="python">Python (pytest)</option>
+                    <option value="javascript">JavaScript (Node)</option>
+                    <option value="typescript">TypeScript (ts-node)</option>
+                    <option value="go">Go (testing)</option>
+                    <option value="java">Java (JUnit)</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Model Provider</label>
+                  <select
+                    value={modelProvider}
+                    onChange={(e) => setModelProvider(e.target.value)}
+                    className="w-full bg-[#0a0c10]/80 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:bg-[#0d0f15] focus:border-white/30"
+                  >
+                    <option value="gemini">Google Gemini (Cloud)</option>
+                    <option value="ollama">Ollama (Local)</option>
+                    <option value="groq">Groq</option>
+                    <option value="openrouter">OpenRouter</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Google Gemini Model Selector */}
+              {modelProvider === 'gemini' && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gemini Tier Selection</label>
+                  <select
+                    value={geminiModel}
+                    onChange={(e) => setGeminiModel(e.target.value)}
+                    className="w-full bg-[#0a0c10]/80 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:bg-[#0d0f15] focus:border-white/30"
+                  >
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Default optimized)</option>
+                    <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Advanced Coding)</option>
+                    <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite</option>
+                    <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Preview)</option>
+                    <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                  </select>
+                </div>
               )}
-            </button>
 
-          </form>
-          
-          {/* Info note about cloud hosting space */}
-          <div className="mt-auto border-t border-white/5 pt-4">
-            <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Cloud Deployment</span>
-            <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400 bg-white/5 border border-white/5 rounded-lg p-2.5">
-              <span>Hugging Face Space:</span>
-              <a
-                href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-white underline font-semibold flex items-center gap-1"
+              {/* Groq Model Selector */}
+              {modelProvider === 'groq' && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Groq Inference Core</label>
+                  <select
+                    value={groqModel}
+                    onChange={(e) => setGroqModel(e.target.value)}
+                    className="w-full bg-[#0a0c10]/80 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:bg-[#0d0f15] focus:border-white/30"
+                  >
+                    <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
+                    <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+                    <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout (Preview)</option>
+                  </select>
+                </div>
+              )}
+
+              {/* OpenRouter Model Selector */}
+              {modelProvider === 'openrouter' && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">OpenRouter Target Model</label>
+                    <button
+                      type="button"
+                      onClick={() => setSettingsOpen(true)}
+                      className="text-[9px] text-slate-350 hover:text-white uppercase font-semibold cursor-pointer"
+                    >
+                      + Add Model ID
+                    </button>
+                  </div>
+                  <select
+                    value={openrouterModel}
+                    onChange={(e) => setOpenrouterModel(e.target.value)}
+                    className="w-full bg-[#0a0c10]/80 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:bg-[#0d0f15] focus:border-white/30"
+                  >
+                    {openrouterCustomModels.map(modelId => (
+                      <option key={modelId} value={modelId}>{modelId}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+
+              <button
+                type="submit"
+                disabled={isGenerating}
+                className="w-full bg-white hover:bg-zinc-200 text-black text-xs font-extrabold py-3 px-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 relative shadow-lg shadow-white/5 cursor-pointer animate-pulse-slow"
               >
-                Launch Cloud
-                <ExternalLink className="w-3 h-3" />
-              </a>
+                {isGenerating ? (
+                  <>
+                    <span>Compiling Deliverables...</span>
+                    <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin absolute right-4" />
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-3.5 h-3.5" />
+                    <span>Execute Self-Healing Generator</span>
+                  </>
+                )}
+              </button>
+
+            </form>
+            
+            {/* Info note about cloud hosting space */}
+            <div className="mt-auto border-t border-white/5 pt-4">
+              <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Cloud Deployment</span>
+              <div className="mt-1 flex items-center justify-between text-[10px] text-slate-350 bg-white/5 border border-white/10 rounded-lg p-2.5">
+                <span>Hugging Face Space:</span>
+                <a
+                  href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white underline font-semibold flex items-center gap-1"
+                >
+                  Launch Cloud
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -2151,54 +2251,56 @@ Payload Parameters:
         </div>
 
         {/* Right Workspace telemetry & results */}
-        <div className="flex-grow flex-1 flex flex-col min-w-0 min-h-0 bg-[#050505]/20">
+        <div className="flex-grow flex-1 flex flex-col min-w-0 min-h-0 bg-transparent p-4 gap-4 overflow-y-auto">
           
           <div className="flex-grow flex flex-col min-h-0">
             
             {/* Telemetry Console */}
             <div
               id="console-wrapper"
-              className="flex-shrink-0 flex flex-col bg-[#050505] border-b border-white/5 overflow-hidden"
+              className="flex-shrink-0 flex flex-col bg-[#07090e] border border-white/10 shadow-lg rounded-xl overflow-hidden mb-4"
               style={{ height: `${consoleHeight}px` }}
             >
-              <div className="bg-[#090909] px-5 py-2.5 border-b border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Terminal className="w-4 h-4 text-slate-400" />
-                  <span className="font-mono text-[10px] text-slate-400 font-semibold tracking-tight">Sandbox Execution Console</span>
+              <div className="bg-[#0f111a] px-4 py-2 border-b border-white/5 flex items-center justify-between relative flex-shrink-0">
+                {/* Dots */}
+                <div className="flex items-center gap-1.5 z-10">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
+                </div>
+                
+                {/* Centered Title */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="font-mono text-[10px] text-zinc-400 font-semibold tracking-tight">Sandbox Environment Active Status Console</span>
+                </div>
+                
+                {/* Right Pill & Controls */}
+                <div className="flex items-center gap-3 z-10">
                   <button
                     onClick={handleClearLogs}
-                    className="text-[9px] font-bold text-slate-500 hover:text-slate-300 transition uppercase ml-2"
+                    className="text-[9px] font-bold text-zinc-500 hover:text-zinc-300 transition uppercase"
                   >
                     Clear Logs
                   </button>
+                  <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold font-mono tracking-wider ${
+                    pulseState === 'Active' 
+                      ? 'bg-amber-950/40 text-amber-400 border border-amber-900/30 animate-pulse' 
+                      : 'bg-[#131b2e] text-[#5f87e2] border border-[#1d2d4c]'
+                  }`}>
+                    {pulseState === 'Active' ? 'ACTIVE' : 'IDLE'}
+                  </span>
                 </div>
-                <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 ${
-                  pulseState === 'Active' ? 'text-white animate-pulse' : pulseState === 'Ready' ? 'text-emerald-400' : 'text-slate-500'
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${
-                    pulseState === 'Active' ? 'bg-white animate-ping' : pulseState === 'Ready' ? 'bg-emerald-400' : 'bg-slate-500'
-                  }`} />
-                  {pulseState}
-                </span>
               </div>
 
-              <div className="p-4 flex-grow overflow-y-auto font-mono text-[11px] flex flex-col gap-1 text-slate-300">
-                {logs.map((log, idx) => {
-                  let typeColor = 'text-slate-400';
-                  if (log.type === 'scraper') typeColor = 'text-zinc-300';
-                  else if (log.type === 'agent') typeColor = 'text-zinc-300';
-                  else if (log.type === 'sandbox') typeColor = 'text-amber-300';
-                  else if (log.type === 'success') typeColor = 'text-emerald-400';
-                  else if (log.type === 'error') typeColor = 'text-red-400';
-                  return (
-                    <div key={idx} className={`leading-relaxed ${typeColor}`}>
-                      {log.text}
-                      {idx === logs.length - 1 && <span className="terminal-caret">_</span>}
-                    </div>
-                  );
-                })}
+              <div className="p-4 flex-grow overflow-y-auto font-mono text-[11px] flex flex-col gap-1 bg-[#0a0c10]">
+                {logs.map((log, idx) => (
+                  <div key={idx} className="relative">
+                    {renderLogText(log.text, log.type)}
+                    {idx === logs.length - 1 && <span className="terminal-caret text-zinc-400">_</span>}
+                  </div>
+                ))}
                 {logs.length === 0 && (
-                  <div className="text-slate-600">Console silent. System waiting...<span className="terminal-caret">_</span></div>
+                  <div className="text-zinc-650 font-mono text-[11px]">Console silent. System waiting...<span className="terminal-caret text-zinc-400">_</span></div>
                 )}
                 <div ref={consoleLogsEndRef} />
               </div>
@@ -2207,27 +2309,24 @@ Payload Parameters:
             {/* Vertical resizing bar */}
             <div
               onMouseDown={() => setIsDraggingConsole(true)}
-              className={`h-1 hover:h-1.5 bg-white/5 hover:bg-white/20 cursor-row-resize flex-shrink-0 flex items-center justify-center relative z-10 ${
-                isDraggingConsole ? 'bg-white/30' : ''
-              }`}
+              className="h-1 bg-white/5 hover:bg-white/10 cursor-row-resize flex-shrink-0 relative z-10"
             >
               <div className="absolute inset-x-0 -top-1 -bottom-1 cursor-row-resize z-20" />
             </div>
 
             {/* Graph flow visualizer + result tabs */}
-            <div className="flex-1 flex flex-col min-h-0 bg-[#080808]/30 backdrop-blur-md p-4 gap-4">
+            <div className="flex-grow flex flex-col min-h-0 glass-panel shadow-2xl rounded-xl p-4 gap-4 mt-2">
               {renderFlowchartVisualizer()}
 
               {/* Output Tab contents */}
-              {resultsVisible && currentIntegration ? (
-                <div className={`glass-panel rounded-xl flex-grow flex flex-col min-h-0 overflow-hidden ${
+              {resultsVisible && currentIntegration ? (                <div className={`rounded-xl border border-white/10 flex-grow flex flex-col min-h-0 overflow-hidden ${
                   fullscreenResult ? 'results-card-fullscreen shadow-2xl z-50' : ''
                 }`}>
                   
                   {/* Actions bar header */}
-                  <div className="bg-[#090909] px-5 py-3 border-b border-white/5 flex items-center justify-between flex-shrink-0">
+                  <div className="bg-[#0a0c10]/60 px-5 py-3 border-b border-white/10 flex items-center justify-between flex-shrink-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-white bg-white/10 border border-white/10 px-2 py-0.5 rounded">
+                      <span className="text-xs font-bold text-white bg-white/5 border border-white/10 px-2 py-0.5 rounded">
                         {currentIntegration.language.toUpperCase()}
                       </span>
                       <h4 className="text-xs font-bold text-white truncate max-w-xs">{currentIntegration.title}</h4>
@@ -2236,14 +2335,14 @@ Payload Parameters:
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => setFullscreenResult(!fullscreenResult)}
-                        className="p-1.5 rounded bg-white/5 border border-white/10 text-slate-400 hover:text-white"
+                        className="p-1.5 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-slate-400 hover:text-white transition cursor-pointer"
                         title="Toggle Fullscreen"
                       >
                         {fullscreenResult ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                       </button>
                       <button
                         onClick={handleDownloadZIP}
-                        className="inline-flex items-center gap-1 font-bold text-[10px] text-white bg-emerald-600 hover:bg-emerald-700 py-1.5 px-3 rounded-lg transition shadow shadow-emerald-500/10"
+                        className="inline-flex items-center gap-1 font-bold text-[10px] text-white bg-emerald-650 hover:bg-emerald-700 py-1.5 px-3 rounded-lg transition shadow shadow-emerald-500/10 cursor-pointer"
                       >
                         <Download className="w-3 h-3" />
                         ZIP Deliverable
@@ -2252,15 +2351,15 @@ Payload Parameters:
                   </div>
 
                   {/* Tabs bar */}
-                  <div className="flex bg-black/50 border-b border-white/5 p-2 gap-1 flex-shrink-0">
+                  <div className="flex bg-[#050505]/45 border-b border-white/5 p-2 gap-1 flex-shrink-0">
                     {(['overview', 'endpoints', 'code', 'tests', 'readme'] as const).map(tab => (
                       <button
                         key={tab}
                         onClick={() => setActiveResultTab(tab)}
-                        className={`text-[10px] font-bold py-1.5 px-3 rounded-lg transition ${
+                        className={`text-[10px] font-bold py-1.5 px-3 rounded-lg transition cursor-pointer ${
                           activeResultTab === tab
-                            ? 'bg-white text-black'
-                            : 'text-slate-400 hover:text-white hover:bg-white/10'
+                            ? 'bg-white text-black font-extrabold shadow-md'
+                            : 'text-slate-400 hover:text-white hover:bg-white/5'
                         }`}
                       >
                         {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -2269,7 +2368,7 @@ Payload Parameters:
                   </div>
 
                   {/* Document panel viewport */}
-                  <div className="p-5 flex-grow overflow-y-auto bg-black/10 text-slate-300">
+                  <div className="p-5 flex-grow overflow-y-auto bg-transparent text-slate-350">
                     {activeResultTab === 'overview' && (
                       <div
                         className="markdown-body"
@@ -2288,14 +2387,14 @@ Payload Parameters:
                           <button
                             id="btn-copy-code"
                             onClick={() => handleCopyCode(currentIntegration.code, 'btn-copy-code')}
-                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-300 hover:text-white"
+                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-350 hover:text-white cursor-pointer"
                           >
                             <Copy className="w-3 h-3" />
                             Copy
                           </button>
                           <button
                             onClick={() => handleDownloadSingleFile('code')}
-                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-300 hover:text-white"
+                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-350 hover:text-white cursor-pointer"
                           >
                             <Download className="w-3 h-3" />
                             Download
@@ -2312,14 +2411,14 @@ Payload Parameters:
                           <button
                             id="btn-copy-tests"
                             onClick={() => handleCopyCode(currentIntegration.tests, 'btn-copy-tests')}
-                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-300 hover:text-white"
+                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-355 hover:text-white cursor-pointer"
                           >
                             <Copy className="w-3 h-3" />
                             Copy
                           </button>
                           <button
                             onClick={() => handleDownloadSingleFile('tests')}
-                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-300 hover:text-white"
+                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-355 hover:text-white cursor-pointer"
                           >
                             <Download className="w-3 h-3" />
                             Download
@@ -2336,14 +2435,14 @@ Payload Parameters:
                           <button
                             id="btn-copy-readme"
                             onClick={() => handleCopyCode(currentIntegration.readme, 'btn-copy-readme')}
-                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-300 hover:text-white"
+                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-355 hover:text-white cursor-pointer"
                           >
                             <Copy className="w-3 h-3" />
                             Copy
                           </button>
                           <button
                             onClick={() => handleDownloadSingleFile('readme')}
-                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-300 hover:text-white"
+                            className="flex items-center gap-1 text-[10px] font-semibold bg-white/5 border border-white/10 hover:bg-white/10 px-2 py-1 rounded transition text-slate-355 hover:text-white cursor-pointer"
                           >
                             <Download className="w-3 h-3" />
                             Download
@@ -2357,8 +2456,8 @@ Payload Parameters:
                   </div>
                 </div>
               ) : (
-                <div className="flex-grow flex flex-col items-center justify-center text-center p-8 border border-dashed border-white/5 rounded-xl bg-white/5">
-                  <FileCode className="w-10 h-10 text-slate-600 mb-2" />
+                <div className="flex-grow flex flex-col items-center justify-center text-center p-8 border border-dashed border-white/10 rounded-xl bg-white/[0.01]">
+                  <FileCode className="w-10 h-10 text-slate-500 mb-2" />
                   <h4 className="text-xs font-bold text-white mb-1">Awaiting Generation Results</h4>
                   <p className="text-[10px] text-slate-500 max-w-xs">Provide constraints on the left parameter panel and trigger execution to populate client deliverables.</p>
                 </div>
