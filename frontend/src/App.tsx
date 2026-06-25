@@ -249,7 +249,7 @@ export default function App() {
     });
   };
 
-  const consoleLogsEndRef = useRef<HTMLDivElement>(null);
+  const consoleLogsContainerRef = useRef<HTMLDivElement>(null);
 
   // Initial Load hooks
   useEffect(() => {
@@ -322,8 +322,8 @@ export default function App() {
 
   // Sync scroll on logs update
   useEffect(() => {
-    if (consoleLogsEndRef.current) {
-      consoleLogsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (consoleLogsContainerRef.current) {
+      consoleLogsContainerRef.current.scrollTop = consoleLogsContainerRef.current.scrollHeight;
     }
   }, [logs]);
 
@@ -753,6 +753,7 @@ export default function App() {
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
+    a.style.display = 'none';
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
@@ -785,6 +786,7 @@ export default function App() {
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
+    a.style.display = 'none';
     a.href = url;
     a.download = `${currentIntegration.title.toLowerCase().replace(/\s+/g, '_')}_wrapper.zip`;
     document.body.appendChild(a);
@@ -2292,7 +2294,10 @@ Payload Parameters:
                 </div>
               </div>
 
-              <div className="p-4 flex-grow overflow-y-auto font-mono text-[11px] flex flex-col gap-1 bg-[#0a0c10]">
+              <div 
+                ref={consoleLogsContainerRef}
+                className="p-4 flex-grow overflow-y-auto font-mono text-[11px] flex flex-col gap-1 bg-[#0a0c10]"
+              >
                 {logs.map((log, idx) => (
                   <div key={idx} className="relative">
                     {renderLogText(log.text, log.type)}
@@ -2302,7 +2307,6 @@ Payload Parameters:
                 {logs.length === 0 && (
                   <div className="text-zinc-650 font-mono text-[11px]">Console silent. System waiting...<span className="terminal-caret text-zinc-400">_</span></div>
                 )}
-                <div ref={consoleLogsEndRef} />
               </div>
             </div>
 
@@ -2320,7 +2324,7 @@ Payload Parameters:
 
               {/* Output Tab contents */}
               {resultsVisible && currentIntegration ? (                <div className={`rounded-xl border border-white/10 flex-grow flex flex-col min-h-0 overflow-hidden ${
-                  fullscreenResult ? 'results-card-fullscreen shadow-2xl z-50' : ''
+                  fullscreenResult ? 'results-card-fullscreen shadow-2xl z-[9999]' : ''
                 }`}>
                   
                   {/* Actions bar header */}
