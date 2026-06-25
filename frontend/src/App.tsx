@@ -5,7 +5,7 @@ import {
   Cpu, Zap, Terminal, FileCode, Play, Check, AlertTriangle, Trash2,
   Download, Copy, Settings, Key, Maximize2, Minimize2,
   Sparkles, Menu, ArrowRight, Shield, Plus, X, ExternalLink,
-  Layers, Database, Code, User
+  Layers, Database, Code, Globe, Mail
 } from 'lucide-react';
 
 interface IntegrationRecord {
@@ -48,6 +48,9 @@ const defaultSystemDiagnostics = [
 export default function App() {
   // Stateful View Router ('landing' | 'workspace')
   const [view, setView] = useState<'landing' | 'workspace'>('landing');
+
+  // Developer Profile Dossier Tab State
+  const [activeDossierTab, setActiveDossierTab] = useState<'json' | 'sh'>('json');
 
   // Sidebar controls
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -125,6 +128,7 @@ export default function App() {
   const [simStep, setSimStep] = useState<'idle' | 'scraping' | 'validating' | 'synthesizing' | 'compiling' | 'healing' | 'success'>('idle');
   const [simLogs, setSimLogs] = useState<string[]>([]);
   const [simTab, setSimTab] = useState<'logs' | 'code' | 'graph'>('logs');
+  const [selectedCapability, setSelectedCapability] = useState<'scraper' | 'healer' | 'sandbox'>('scraper');
   const simTimeoutsRef = useRef<any[]>([]);
 
   useEffect(() => {
@@ -1095,42 +1099,164 @@ class StripeChargesAPI:
             </div>
           </div>
 
-          {/* FEATURES SECTION (GLASS CARDS GRID) */}
+          {/* FEATURES SECTION (INTERACTIVE BLUEPRINT DASHBOARD) */}
           <section id="features" className="w-full py-16 border-t border-white/5 mt-16">
             <div className="text-center mb-12">
-              <span className="text-[10px] font-bold text-indigo-400 font-mono uppercase tracking-wider">[01] DESIGNED FOR PRODUCTION PERFORMANCE</span>
+              <span className="text-[10px] font-bold text-indigo-400 font-mono uppercase tracking-wider">[01] SYSTEM ARCHITECTURE</span>
               <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-white mt-2">Agentic Framework Capabilities</h2>
+              <p className="text-slate-400 text-xs mt-2 max-w-md mx-auto font-sans">Click on any core module below to inspect its live visual telemetry and sandboxed operations.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-              <div className="glass-panel p-6 rounded-2xl glass-card-hover bg-slate-950/20 border border-white/5">
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4">
-                  <Zap className="w-5 h-5 text-indigo-400" />
-                </div>
-                <h3 className="font-heading text-lg font-bold text-white mb-2">Fast Dynamic Scraper</h3>
-                <p className="text-slate-400 text-xs leading-relaxed">
-                  Crawl any API documentation addresses dynamically utilizing Firecrawl API. Converts documentation pages into markdown files and verifies REST API routes. Includes keyless mode fallback.
-                </p>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 text-left">
+              {/* Left Selector Column (5 cols) */}
+              <div className="md:col-span-5 flex flex-col gap-4">
+                {[
+                  {
+                    id: 'scraper' as const,
+                    title: 'Fast Dynamic Scraper',
+                    badge: 'FIRECRAWL NODE',
+                    desc: 'Crawl and parse any API documentation dynamically utilizing Firecrawl API. Automatically maps Rest routes and outputs normalized markdown specs.',
+                    icon: <Zap className="w-4 h-4" />
+                  },
+                  {
+                    id: 'healer' as const,
+                    title: 'LangGraph Self Healing',
+                    badge: 'STATEFUL REPAIR',
+                    desc: 'A stateful loop that feeds sandbox tracebacks and compiler errors back to the LLM to patch missing imports, syntax, and logic bugs dynamically.',
+                    icon: <Cpu className="w-4 h-4" />
+                  },
+                  {
+                    id: 'sandbox' as const,
+                    title: 'Isolated Compiler Sandbox',
+                    badge: 'SUBPROCESS VENV',
+                    desc: 'Boot local container environments executing Python pytest, JavaScript Node, TypeScript ts-node, Go testing, or Java JUnit assertions.',
+                    icon: <Shield className="w-4 h-4" />
+                  }
+                ].map((item) => {
+                  const isActive = selectedCapability === item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => setSelectedCapability(item.id)}
+                      className={`p-5 rounded-xl border cursor-pointer transition-all duration-200 text-left relative ${
+                        isActive
+                          ? 'bg-indigo-650/10 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.08)]'
+                          : 'bg-slate-950/20 border-white/5 hover:bg-slate-950/40 hover:border-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-colors ${
+                          isActive 
+                            ? 'bg-indigo-500/15 border-indigo-400 text-indigo-400' 
+                            : 'bg-white/5 border-white/10 text-slate-500'
+                        }`}>
+                          {item.icon}
+                        </div>
+                        <span className={`text-[8px] font-mono font-bold px-2 py-0.5 rounded ${
+                          isActive 
+                            ? 'bg-indigo-500/20 text-indigo-300' 
+                            : 'bg-white/5 text-slate-500'
+                        }`}>
+                          {item.badge}
+                        </span>
+                      </div>
+                      <h4 className={`text-sm font-bold mt-3 transition-colors ${isActive ? 'text-white' : 'text-slate-300'}`}>
+                        {item.title}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 leading-relaxed mt-1.5">{item.desc}</p>
+                    </div>
+                  );
+                })}
               </div>
 
-              <div className="glass-panel p-6 rounded-2xl glass-card-hover bg-slate-950/20 border border-white/5">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4">
-                  <Cpu className="w-5 h-5 text-cyan-400" />
+              {/* Right Panel Viewport (7 cols) */}
+              <div className="md:col-span-7 flex flex-col min-h-[380px] bg-[#06080e]/60 border border-white/10 rounded-xl overflow-hidden shadow-2xl relative">
+                {/* Header of Viewport */}
+                <div className="bg-[#0b0f17] border-b border-white/10 px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-slate-750" />
+                    <span className="w-2 h-2 rounded-full bg-slate-750" />
+                    <span className="w-2 h-2 rounded-full bg-slate-750" />
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    {selectedCapability === 'scraper' && 'scraper-engine://crawler.log'}
+                    {selectedCapability === 'healer' && 'agent-healer://diff-patch.log'}
+                    {selectedCapability === 'sandbox' && 'sandbox-sandbox://pytest.stdout'}
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
                 </div>
-                <h3 className="font-heading text-lg font-bold text-white mb-2">LangGraph Self Healing</h3>
-                <p className="text-slate-400 text-xs leading-relaxed">
-                  Stateful agent orchestrations that monitor code compiling results. When compilers raise stderr logs or assert warnings, the agent loops back, repairs parameters, and corrects codebase syntaxes.
-                </p>
-              </div>
 
-              <div className="glass-panel p-6 rounded-2xl glass-card-hover bg-slate-950/20 border border-white/5">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">
-                  <Shield className="w-5 h-5 text-amber-500" />
+                {/* Viewport Content */}
+                <div className="p-5 flex-grow overflow-y-auto">
+                  {selectedCapability === 'scraper' && (
+                    <div className="font-mono text-[10px] text-slate-300 space-y-1.5 text-left">
+                      <div className="text-cyan-400 font-bold">$ curl -X GET "https://api.stripe.com/v1/charges"</div>
+                      <div className="text-slate-500">HTTP/1.1 200 OK</div>
+                      <div className="text-slate-500">Content-Type: application/json</div>
+                      <div className="text-slate-500">Content-Length: 1424</div>
+                      <div className="text-slate-400 mt-3 font-semibold font-sans">Scraped REST Specification Markdown:</div>
+                      <div className="bg-[#0a0d14] p-3 rounded-lg border border-white/5 text-slate-400 leading-normal">
+                        <pre className="overflow-x-auto whitespace-pre-wrap">{`# Charges API
+POST /v1/charges
+Headers:
+  Authorization: Bearer <key>
+Payload Parameters:
+  amount: integer (required) - A positive integer representing how much to charge.
+  currency: string (required) - Three-letter ISO currency code.
+  source: string (optional) - A payment source ID.`}</pre>
+                      </div>
+                      <div className="text-[9px] text-slate-500 border-t border-white/5 pt-2 flex justify-between items-center mt-4">
+                        <span>STATUS: 200 OK</span>
+                        <span>LATENCY: 142ms</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedCapability === 'healer' && (
+                    <div className="font-mono text-[10px] text-slate-300 space-y-1.5 text-left">
+                      <div className="text-indigo-400 font-bold">Traceback detected: NameError: name 'requests' is not defined</div>
+                      <div className="text-slate-500">Analyzing syntax rules... Applying self-healing git diff patch.</div>
+                      <div className="bg-[#0a0d14] p-3 rounded-lg border border-white/5 text-slate-400 leading-normal space-y-0.5 overflow-x-auto">
+                        <div className="text-slate-600">@@ -1,5 +1,6 @@</div>
+                        <div className="text-emerald-400 bg-emerald-950/20 font-bold px-1 rounded-sm">+ import requests</div>
+                        <div className="text-slate-400">  class StripeChargesAPI:</div>
+                        <div className="text-slate-400">      def __init__(self, api_key: str):</div>
+                        <div className="text-slate-500">...</div>
+                        <div className="text-slate-600">@@ -14,3 +15,7 @@</div>
+                        <div className="text-red-400 bg-red-950/20 font-bold px-1 rounded-sm">-         response = requests.post(url, json=payload)</div>
+                        <div className="text-emerald-400 bg-emerald-950/20 font-bold px-1 rounded-sm">+         try:</div>
+                        <div className="text-emerald-400 bg-emerald-950/20 font-bold px-1 rounded-sm">+             response = requests.post(url, json=payload)</div>
+                        <div className="text-emerald-400 bg-emerald-950/20 font-bold px-1 rounded-sm">+         except requests.exceptions.RequestException as e:</div>
+                        <div className="text-emerald-400 bg-emerald-950/20 font-bold px-1 rounded-sm">+             raise RuntimeError(e)</div>
+                      </div>
+                      <div className="text-[9px] text-indigo-400 border-t border-white/5 pt-2 flex justify-between items-center mt-4">
+                        <span>REPAIR ROUTINE: SUCCESSFUL</span>
+                        <span>ATTEMPTS: 1/3</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedCapability === 'sandbox' && (
+                    <div className="font-mono text-[10px] text-slate-300 space-y-1.5 text-left">
+                      <div className="text-amber-400 font-bold">$ pytest test_client.py</div>
+                      <div className="text-slate-400">=================== test session starts ===================</div>
+                      <div className="text-slate-500">platform win32 -- Python 3.12.1, pytest-8.0.2</div>
+                      <div className="text-slate-500">plugins: asyncio-0.23.5, cov-4.1.0</div>
+                      <div className="text-slate-400 mt-2 font-semibold font-sans">Collected 4 items:</div>
+                      <div className="flex flex-col gap-1 mt-1 pl-2">
+                        <div className="flex justify-between"><span className="text-slate-400">test_client_initialization</span> <span className="text-emerald-400 font-bold">PASSED [25%]</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400">test_charges_creation_success</span> <span className="text-emerald-400 font-bold">PASSED [50%]</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400">test_charges_invalid_currency</span> <span className="text-emerald-400 font-bold">PASSED [75%]</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400">test_charges_unauthorized_key</span> <span className="text-emerald-400 font-bold">PASSED [100%]</span></div>
+                      </div>
+                      <div className="text-emerald-400 font-bold mt-3">======= 4 passed, 0 failed, 0 warnings in 0.08 seconds =======</div>
+                      <div className="text-[9px] text-emerald-400 border-t border-white/5 pt-2 flex justify-between items-center mt-4">
+                        <span>SANDBOX RUN: VERIFIED CLEAN</span>
+                        <span>COVERAGE: 94.6%</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <h3 className="font-heading text-lg font-bold text-white mb-2">Isolated Compiler Sandbox</h3>
-                <p className="text-slate-400 text-xs leading-relaxed">
-                  Launches local subprocess execution commands (pytest, ts-node, go test, javac) inside isolated containers. Captures logs and verifies code compilation safety before deliverable downloads.
-                </p>
               </div>
             </div>
           </section>
@@ -1222,61 +1348,346 @@ class StripeChargesAPI:
           </section>
 
           {/* DEVELOPER TEAM PROFILE (PLACEMENT HACKATHON FOCUS CARD) */}
-          <section id="team" className="w-full py-16 border-t border-white/5">
+          <section id="team" className="w-full py-16 border-t border-white/5 relative overflow-hidden">
+            {/* Ambient Background Glows */}
+            <div className="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-indigo-500/5 blur-[80px] pointer-events-none" />
+            <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-purple-500/5 blur-[80px] pointer-events-none" />
+
             <div className="text-center mb-12">
               <span className="text-[10px] font-bold text-indigo-400 font-mono uppercase tracking-wider">[03] SYSTEM DEVELOPER</span>
               <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-white mt-2">The Engineering Team</h2>
             </div>
 
-            <div className="max-w-md mx-auto glass-panel p-6 rounded-2xl shadow-xl flex flex-col items-center text-center relative overflow-hidden bg-slate-950/20 border border-white/5 glass-card-hover">
-              <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-indigo-500 via-cyan-500 to-amber-500" />
+            <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 bg-[#03060f]/60 rounded-2xl border border-white/10 shadow-2xl overflow-hidden relative backdrop-blur-md">
+              {/* Technical gridded blueprint background overlay */}
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:14px_14px] pointer-events-none opacity-50" />
               
-              <div className="w-20 h-20 rounded-full border-2 border-white/10 bg-slate-900/60 overflow-hidden flex items-center justify-center mb-4 text-slate-500 shadow-md">
-                <User className="w-10 h-10 text-indigo-400" />
+              {/* Sleek top indicator line */}
+              <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+              
+              {/* Left Panel: Profile and Social Links */}
+              <div className="col-span-1 md:col-span-5 p-8 flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/10 relative z-10">
+                <div>
+                  {/* Glowing Avatar Ring */}
+                  <div className="relative w-24 h-24 mb-6">
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 opacity-20 blur-sm animate-pulse" />
+                    <div className="absolute -inset-1.5 rounded-full border border-dashed border-indigo-500/30 animate-[spin_20s_linear_infinite]" />
+                    
+                    <div className="absolute inset-0 rounded-full border-2 border-white/10 bg-slate-900 flex items-center justify-center text-slate-400 overflow-hidden shadow-inner">
+                      <div className="flex flex-col items-center">
+                        <Code className="w-8 h-8 text-indigo-400 mb-0.5" />
+                        <span className="font-mono text-[9px] text-purple-400 font-bold uppercase">yash_k</span>
+                      </div>
+                    </div>
+                    
+                    {/* Active Status Badge Pulse */}
+                    <span className="absolute bottom-0 right-0 flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-slate-950 flex items-center justify-center">
+                        <span className="block h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-heading text-2xl font-bold text-white tracking-tight">Yashwant K</h3>
+                      <span className="px-2 py-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-400/10 border border-emerald-500/20 rounded-full font-mono uppercase tracking-wider">Active</span>
+                    </div>
+                    <p className="font-mono text-xs text-indigo-400 font-semibold tracking-wide uppercase">System Architect & Agentic Dev</p>
+                    <div className="space-y-1 mt-3 text-slate-400 text-xs font-sans">
+                      <p className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />
+                        <span>Sri Shakthi Institute of Eng & Tech</span>
+                      </p>
+                      <div className="text-slate-500 text-[11px] pl-3.5 italic">CS Undergraduate, 4th Year</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Clean, optimized action grid */}
+                <div className="grid grid-cols-2 gap-3 mt-8">
+                  <a
+                    href="https://github.com/Yashwant00CR7"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 text-xs font-mono font-bold border border-white/5 hover:border-indigo-500/30 rounded-xl py-3 px-4 bg-white/[0.01] hover:bg-indigo-500/[0.04] text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
+                  >
+                    <Code className="w-4 h-4 text-indigo-400" />
+                    <span>GitHub</span>
+                  </a>
+                  <a
+                    href="https://www.linkedin.com/in/yashwant00cr7/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 text-xs font-mono font-bold border border-white/5 hover:border-cyan-500/30 rounded-xl py-3 px-4 bg-white/[0.01] hover:bg-cyan-500/[0.04] text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-cyan-400">
+                      <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                      <rect x="2" y="9" width="4" height="12"></rect>
+                      <circle cx="4" cy="4" r="2"></circle>
+                    </svg>
+                    <span>LinkedIn</span>
+                  </a>
+                  <a
+                    href="https://yashwantk.vercel.app/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 text-xs font-mono font-bold border border-white/5 hover:border-purple-500/30 rounded-xl py-3 px-4 bg-white/[0.01] hover:bg-purple-500/[0.04] text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
+                  >
+                    <Globe className="w-4 h-4 text-purple-400" />
+                    <span>Portfolio</span>
+                  </a>
+                  <a
+                    href="mailto:yashwant.k.dev@gmail.com"
+                    className="flex items-center justify-center gap-2 text-xs font-mono font-bold border border-white/5 hover:border-pink-500/30 rounded-xl py-3 px-4 bg-white/[0.01] hover:bg-pink-500/[0.04] text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
+                  >
+                    <Mail className="w-4 h-4 text-pink-400" />
+                    <span>Email</span>
+                  </a>
+                </div>
               </div>
 
-              <h3 className="font-heading text-xl font-bold text-white font-sans">Yashwant K</h3>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1 font-mono">Computer Science & Engineering</span>
-              <span className="text-xs text-indigo-400 mt-1">Sri Shakthi Institute of Engineering and Technology</span>
-              
-              <p className="text-slate-400 text-xs mt-3 leading-relaxed">
-                Focused on Backend Systems, API Integrations, Agentic Workflows, and Developer Tooling. Built this project as a core Placement Hackathon submission to validate software engineering standards and SoC architectures.
-              </p>
+              {/* Right Panel: Interactive Code Viewport / Terminal */}
+              <div className="col-span-1 md:col-span-7 p-6 md:p-8 flex flex-col justify-center relative z-10 bg-slate-950/20">
+                <div className="w-full flex-grow flex flex-col border border-white/10 rounded-xl overflow-hidden bg-[#050814]/90 shadow-2xl relative font-mono text-[11px] leading-relaxed">
+                  {/* Tab Bar */}
+                  <div className="flex items-center justify-between border-b border-white/10 bg-[#070b1b]/80 px-4 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setActiveDossierTab('json')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-t-lg transition-all text-[11px] cursor-pointer ${
+                          activeDossierTab === 'json'
+                            ? 'bg-[#050814] text-indigo-400 border-t-2 border-indigo-500 font-bold'
+                            : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                      >
+                        <FileCode className="w-3.5 h-3.5" />
+                        dossier.json
+                      </button>
+                      <button
+                        onClick={() => setActiveDossierTab('sh')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-t-lg transition-all text-[11px] cursor-pointer ${
+                          activeDossierTab === 'sh'
+                            ? 'bg-[#050814] text-amber-400 border-t-2 border-amber-500 font-bold'
+                            : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                      >
+                        <Terminal className="w-3.5 h-3.5" />
+                        telemetry.sh
+                      </button>
+                    </div>
+                    {/* Window Controls (macOS style mockup) */}
+                    <div className="flex gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500/40" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/40" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500/40" />
+                    </div>
+                  </div>
 
-              <div className="flex gap-3 mt-6 w-full">
-                <a
-                  href="https://github.com/Yashwant00CR7"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold border border-white/10 hover:border-white/20 rounded-xl py-2.5 bg-white/5 text-slate-300 hover:text-white transition"
-                >
-                  <Code className="w-3.5 h-3.5" />
-                  GitHub
-                </a>
-                <a
-                  href="mailto:yashwant.k.dev@gmail.com"
-                  className="flex-grow flex items-center justify-center gap-1.5 text-xs font-bold bg-indigo-600 text-white rounded-xl py-2.5 hover:opacity-90 transition"
-                >
-                  <User className="w-3.5 h-3.5" />
-                  Contact Email
-                </a>
+                  {/* Editor Window Body with Smooth Animated Tab Switching & Line Numbers */}
+                  <div className="p-5 flex-grow overflow-y-auto max-h-[300px] text-slate-300 bg-[#050814]/50 select-text min-h-[220px] text-left">
+                    <AnimatePresence mode="wait">
+                      {activeDossierTab === 'json' ? (
+                        <motion.div
+                          key="json"
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.15 }}
+                          className="flex font-mono text-[11px] leading-relaxed"
+                        >
+                          {/* Line numbers column */}
+                          <div className="text-slate-600 text-right pr-4 border-r border-white/5 select-none space-y-1">
+                            <p>1</p>
+                            <p>2</p>
+                            <p>3</p>
+                            <p>4</p>
+                            <p>5</p>
+                            <p>6</p>
+                            <p>7</p>
+                            <p>8</p>
+                            <p>9</p>
+                            <p>10</p>
+                            <p>11</p>
+                            <p>12</p>
+                          </div>
+                          
+                          {/* Code Content */}
+                          <div className="pl-4 space-y-1">
+                            <p><span className="text-indigo-400">{"{"}</span></p>
+                            <p className="pl-4"><span className="text-pink-400">"developer"</span>: <span className="text-emerald-400">"Yashwant K"</span>,</p>
+                            <p className="pl-4"><span className="text-pink-400">"specialization"</span>: <span className="text-emerald-400">"Backend & Agentic Systems"</span>,</p>
+                            <p className="pl-4"><span className="text-pink-400">"academic"</span>: <span className="text-indigo-400">{"{"}</span></p>
+                            <p className="pl-8"><span className="text-pink-400">"institution"</span>: <span className="text-emerald-400">"Sri Shakthi Inst of Technology"</span>,</p>
+                            <p className="pl-8"><span className="text-pink-400">"discipline"</span>: <span className="text-emerald-400">"Computer Science & Eng"</span></p>
+                            <p className="pl-4"><span className="text-indigo-400">{"}"}</span>,</p>
+                            <p className="pl-4"><span className="text-pink-400">"architecture_standards"</span>: <span className="text-indigo-400">{"{"}</span></p>
+                            <p className="pl-8"><span className="text-pink-400">"patterns"</span>: <span className="text-amber-400">"Separation of Concerns (SoC)"</span>,</p>
+                            <p className="pl-8"><span className="text-pink-400">"automation"</span>: <span className="text-amber-400">"LangGraph Stateful Loops"</span></p>
+                            <p className="pl-4"><span className="text-indigo-400">{"}"}</span></p>
+                            <p><span className="text-indigo-400">{"}"}</span></p>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="sh"
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.15 }}
+                          className="flex font-mono text-[11px] leading-relaxed"
+                        >
+                          {/* Line numbers column */}
+                          <div className="text-slate-600 text-right pr-4 border-r border-white/5 select-none space-y-1">
+                            <p>1</p>
+                            <p>2</p>
+                            <p>3</p>
+                            <p>4</p>
+                            <p>5</p>
+                            <p>6</p>
+                            <p>7</p>
+                          </div>
+                          
+                          {/* Script Content */}
+                          <div className="pl-4 space-y-1.5">
+                            <p className="text-slate-500">$ ./telemetry.sh --verify-credentials</p>
+                            <p className="text-emerald-400">[OK] PORTFOLIO: <a href="https://yashwantk.vercel.app/" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition">yashwantk.vercel.app</a></p>
+                            <p className="text-emerald-400">[OK] LINKEDIN: <a href="https://www.linkedin.com/in/yashwant00cr7/" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition">linkedin.com/in/yashwant00cr7</a></p>
+                            <p className="text-emerald-400">[OK] GITHUB: <a href="https://github.com/Yashwant00CR7" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition">github.com/Yashwant00CR7</a></p>
+                            <p className="text-blue-400">[INFO] Compiling local test sandboxes...</p>
+                            <p className="text-emerald-400">[OK] Sandbox compiler execution verified.</p>
+                            <p className="text-purple-400 animate-pulse">[READY] Status: Live System Architect active</p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
               </div>
+
             </div>
           </section>
         </main>
 
         {/* Global Footer */}
-        <footer className="border-t border-white/5 py-8 text-center text-xs text-slate-500 relative z-10 w-full bg-[#03060f]/80 backdrop-blur-sm">
-          <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-indigo-400 animate-pulse" />
-              <span className="font-heading font-bold text-white">Smart API DevTool</span>
+        <footer className="border-t border-white/5 pt-16 pb-8 relative z-10 w-full bg-[#03060f]/90 backdrop-blur-md">
+          <div className="max-w-7xl mx-auto px-6">
+            {/* Top Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 mb-12">
+              
+              {/* Column 1: Brand (4 cols) */}
+              <div className="md:col-span-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-indigo-400 animate-pulse" />
+                  <span className="font-heading font-bold text-white text-base">Smart API DevTool</span>
+                </div>
+                <p className="text-slate-400 text-xs leading-relaxed max-w-sm">
+                  Autonomous developer agent specializing in parsing unstructured API documentation, generating clean integration wrappers, and resolving sandbox compilation failures in real-time.
+                </p>
+              </div>
+
+              {/* Column 2: Navigation & Cloud (2 cols) */}
+              <div className="md:col-span-2 space-y-4">
+                <h4 className="text-white text-xs font-mono font-bold uppercase tracking-wider">Deployment</h4>
+                <ul className="space-y-2 text-xs text-slate-400">
+                  <li>
+                    <a 
+                      href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="hover:text-indigo-400 transition flex items-center gap-1"
+                    >
+                      Hugging Face Space
+                      <ExternalLink className="w-3 h-3 text-slate-500" />
+                    </a>
+                  </li>
+                  <li>
+                    <button 
+                      onClick={() => setView('workspace')} 
+                      className="hover:text-indigo-400 transition cursor-pointer text-left"
+                    >
+                      Workspace Console
+                    </button>
+                  </li>
+                  <li>
+                    <a 
+                      href="https://github.com/Yashwant00CR7" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="hover:text-indigo-400 transition"
+                    >
+                      GitHub Repository
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Column 3: System Standards (3 cols) */}
+              <div className="md:col-span-3 space-y-4">
+                <h4 className="text-white text-xs font-mono font-bold uppercase tracking-wider">Core Standards</h4>
+                <ul className="space-y-2 text-xs text-slate-400 font-sans">
+                  <li className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500/80" />
+                    Clean Separation of Concerns (SoC)
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500/80" />
+                    LangGraph Stateful Agent Loops
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500/80" />
+                    Isolated Sandbox Verification
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500/80" />
+                    Conventional Commits Spec
+                  </li>
+                </ul>
+              </div>
+
+              {/* Column 4: System Diagnostics & Developer (3 cols) */}
+              <div className="md:col-span-3 space-y-4">
+                <h4 className="text-white text-xs font-mono font-bold uppercase tracking-wider">Telemetry Status</h4>
+                <div className="space-y-2 font-mono text-[10px] text-slate-400">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>API SCRAPER: <span className="text-emerald-400 font-bold">ONLINE</span></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>SANDBOX VERIFIER: <span className="text-emerald-400 font-bold">ONLINE</span></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500 animate-pulse"></span>
+                    </span>
+                    <span>AGENT STATE: <span className="text-indigo-400 font-bold">STANDBY</span></span>
+                  </div>
+                </div>
+                <div className="border-t border-white/5 pt-3">
+                  <span className="text-[10px] text-slate-500 block">Developer Identity:</span>
+                  <a href="#team" className="text-xs text-indigo-400 hover:text-indigo-300 font-bold transition">Yashwant K</a>
+                </div>
+              </div>
+
             </div>
-            <div className="text-slate-400 font-mono text-[10px]">
-              Cloud Hosting Space: <a href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool" target="_blank" rel="noopener noreferrer" className="hover:text-white underline">Yash030/Smart-Dev-API-Tool</a>
-            </div>
-            <div className="text-slate-500 text-[10px]">
-              Academic Hackathon Project © {new Date().getFullYear()} Yashwant K. All Rights Reserved.
+
+            {/* Bottom Bar */}
+            <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-[10px] font-mono">
+              <div>
+                © {new Date().getFullYear()} Yashwant K. All Rights Reserved. Built for securing software engineering placement.
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="px-2 py-0.5 border border-white/5 rounded bg-white/[0.01]">BUILD v2.5.4-STABLE</span>
+                <span className="text-indigo-500/80 font-bold uppercase tracking-widest">// ACADEMIC HACKATHON DELIVERABLE</span>
+              </div>
             </div>
           </div>
         </footer>
