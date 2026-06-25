@@ -1357,7 +1357,7 @@ Payload Parameters:
           {/* DEPLOYMENT TIERS COMPARISON */}
           <section id="comparison" className="w-full py-16 border-t border-white/5">
             <div className="text-center mb-12">
-              <span className="text-[10px] font-bold text-zinc-400 font-mono uppercase tracking-wider">[02] OPERATIONAL EXECUTION TIERS</span>
+              <span className="text-[10px] font-bold text-indigo-400 font-mono uppercase tracking-wider">[02] OPERATIONAL EXECUTION TIERS</span>
               <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-white mt-2">Operational Execution Tiers</h2>
               <p className="text-slate-400 text-xs mt-2 max-w-md mx-auto font-sans">Compare deployment options: run locally offline or scale on hybrid cloud models.</p>
             </div>
@@ -1447,7 +1447,7 @@ Payload Parameters:
             <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-zinc-500/[0.02] blur-[80px] pointer-events-none" />
 
             <div className="text-center mb-12">
-              <span className="text-[10px] font-bold text-zinc-400 font-mono uppercase tracking-wider">[03] SYSTEM DEVELOPER</span>
+              <span className="text-[10px] font-bold text-indigo-400 font-mono uppercase tracking-wider">[03] SYSTEM DEVELOPER</span>
               <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-white mt-2">The Engineering Team</h2>
             </div>
 
@@ -1668,43 +1668,85 @@ Payload Parameters:
         </main>
 
         {/* Global Footer */}
-        <footer className="border-t border-white/5 pt-16 pb-8 relative z-10 w-full bg-[#050505]/95 backdrop-blur-md">
-          <div className="max-w-7xl mx-auto px-6">
+        <footer className="border-t border-white/10 bg-[#050505]/95 backdrop-blur-md pt-16 pb-12 relative z-10 w-full select-none mt-16">
+          {/* Ambient Footer Glow */}
+          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-white/15 to-transparent pointer-events-none" />
+          <div className="absolute top-0 left-1/4 w-[400px] h-[400px] rounded-full bg-purple-500/[0.02] blur-[100px] pointer-events-none" />
+          <div className="absolute top-0 right-1/4 w-[400px] h-[400px] rounded-full bg-emerald-500/[0.02] blur-[100px] pointer-events-none" />
+
+          <div className="max-w-6xl mx-auto px-6">
+            
             {/* Top Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 mb-12 relative z-10">
               
               {/* Column 1: Brand (4 cols) */}
               <div className="md:col-span-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-white animate-pulse" />
-                  <span className="font-heading font-bold text-white text-base">Smart API DevTool</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md">
+                    <Zap className="w-4.5 h-4.5 text-black" />
+                  </div>
+                  <span className="font-heading font-bold text-white text-base">
+                    Smart API <span className="bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">DevTool</span>
+                  </span>
                 </div>
                 <p className="text-slate-400 text-xs leading-relaxed max-w-sm">
                   Autonomous developer agent specializing in parsing unstructured API documentation, generating clean integration wrappers, and resolving sandbox compilation failures in real-time.
                 </p>
+                {/* Social/Developer Links */}
+                <div className="flex items-center gap-2 pt-2">
+                  <a
+                    href="https://github.com/Yashwant00CR7/Smart-API-Integration-Dev-Tool"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition cursor-pointer"
+                    title="GitHub Repository"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+                      <path d="M9 18c-4.51 2-5-2-7-2" />
+                    </svg>
+                  </a>
+                  <a
+                    href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition cursor-pointer"
+                    title="Hugging Face Space"
+                  >
+                    <Globe className="w-4 h-4" />
+                  </a>
+                  <a
+                    href="mailto:yashw.dev@gmail.com"
+                    className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition cursor-pointer"
+                    title="Contact Developer"
+                  >
+                    <Mail className="w-4 h-4" />
+                  </a>
+                </div>
               </div>
 
-              {/* Column 2: Navigation & Cloud (2 cols) */}
+              {/* Column 2: Platform Links (2 cols) */}
               <div className="md:col-span-2 space-y-4">
                 <h4 className="text-white text-xs font-mono font-bold uppercase tracking-wider">Deployment</h4>
-                <ul className="space-y-2 text-xs text-slate-400">
+                <ul className="space-y-3.5 text-xs text-slate-400">
                   <li>
                     <a 
                       href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool" 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="hover:text-white transition flex items-center gap-1"
+                      className="group flex items-center gap-1 hover:text-white transition"
                     >
-                      Hugging Face Space
-                      <ExternalLink className="w-3 h-3 text-slate-500" />
+                      HF Space
+                      <ExternalLink className="w-3 h-3 text-slate-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                     </a>
                   </li>
                   <li>
                     <button 
                       onClick={() => navigateTo('workspace')} 
-                      className="hover:text-white transition cursor-pointer text-left"
+                      className="group flex items-center gap-1 hover:text-white transition cursor-pointer text-left"
                     >
-                      Workspace Console
+                      Console Port
+                      <ArrowRight className="w-3 h-3 text-slate-500 group-hover:translate-x-1 transition-transform" />
                     </button>
                   </li>
                   <li>
@@ -1712,9 +1754,10 @@ Payload Parameters:
                       href="https://github.com/Yashwant00CR7" 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="hover:text-white transition"
+                      className="group flex items-center gap-1 hover:text-white transition"
                     >
-                      GitHub Repository
+                      Git Account
+                      <ExternalLink className="w-3 h-3 text-slate-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                     </a>
                   </li>
                 </ul>
@@ -1722,68 +1765,61 @@ Payload Parameters:
 
               {/* Column 3: System Standards (3 cols) */}
               <div className="md:col-span-3 space-y-4">
-                <h4 className="text-white text-xs font-mono font-bold uppercase tracking-wider">Core Standards</h4>
-                <ul className="space-y-2 text-xs text-slate-400 font-sans">
-                  <li className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500/80" />
-                    Clean Separation of Concerns (SoC)
+                <h4 className="text-white text-xs font-mono font-bold uppercase tracking-wider">Core Architecture</h4>
+                <ul className="space-y-2.5 text-xs text-slate-400">
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70" />
+                    Clean Separation of Concerns
                   </li>
-                  <li className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500/80" />
-                    LangGraph Stateful Agent Loops
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70" />
+                    LangGraph Stateful Workflows
                   </li>
-                  <li className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500/80" />
-                    Isolated Sandbox Verification
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70" />
+                    Isolated Sandbox Compilers
                   </li>
-                  <li className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500/80" />
-                    Conventional Commits Spec
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70" />
+                    Real-time Agent Self-Healing
                   </li>
                 </ul>
               </div>
 
-              {/* Column 4: System Diagnostics & Developer (3 cols) */}
-              <div className="md:col-span-3 space-y-4">
-                <h4 className="text-white text-xs font-mono font-bold uppercase tracking-wider">Telemetry Status</h4>
-                <div className="space-y-2 font-mono text-[10px] text-slate-400">
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    <span>API SCRAPER: <span className="text-emerald-400 font-bold">ONLINE</span></span>
+              {/* Column 4: System Diagnostics Widget (3 cols) */}
+              <div className="md:col-span-3 space-y-4 bg-white/[0.02] border border-white/5 rounded-2xl p-4 backdrop-blur-sm">
+                <h4 className="text-white text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Telemetry Diagnostic
+                </h4>
+                <div className="space-y-2 font-mono text-[9px] text-slate-400">
+                  <div className="flex justify-between items-center">
+                    <span>API SCRAPER:</span>
+                    <span className="text-emerald-450 font-bold">ONLINE</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    <span>SANDBOX VERIFIER: <span className="text-emerald-400 font-bold">ONLINE</span></span>
+                  <div className="flex justify-between items-center">
+                    <span>SANDBOX EXEC:</span>
+                    <span className="text-emerald-450 font-bold">ONLINE</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-500 animate-pulse"></span>
-                    </span>
-                    <span>AGENT STATE: <span className="text-white font-bold">STANDBY</span></span>
+                  <div className="flex justify-between items-center">
+                    <span>LLM AGENT:</span>
+                    <span className="text-white font-bold animate-pulse">STANDBY</span>
                   </div>
                 </div>
-                <div className="border-t border-white/5 pt-3">
-                  <span className="text-[10px] text-slate-500 block">Developer Identity:</span>
-                  <a href="#team" className="text-xs text-white hover:text-zinc-300 font-bold transition">Yashwant K</a>
+                <div className="border-t border-white/5 pt-2 flex flex-wrap gap-1">
+                  <span className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[8px] font-bold text-slate-400 font-mono">React</span>
+                  <span className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[8px] font-bold text-slate-400 font-mono">FastAPI</span>
+                  <span className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[8px] font-bold text-slate-400 font-mono">LangGraph</span>
+                  <span className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[8px] font-bold text-slate-400 font-mono">Tailwind</span>
                 </div>
               </div>
 
             </div>
 
             {/* Bottom Bar */}
-            <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-[10px] font-mono">
-              <div>
+            <div className="border-t border-white/5 pt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-[10px] font-mono relative z-10">
+              <div className="text-center md:text-left leading-normal">
                 © {new Date().getFullYear()} Yashwant K. All Rights Reserved. Built for securing software engineering placement.
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="px-2 py-0.5 border border-white/5 rounded bg-white/[0.01]">BUILD v2.5.4-STABLE</span>
-                <span className="text-white/80 font-bold uppercase tracking-widest">// ACADEMIC HACKATHON DELIVERABLE</span>
               </div>
             </div>
           </div>
