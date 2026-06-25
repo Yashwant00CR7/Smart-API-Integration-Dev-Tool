@@ -1468,7 +1468,7 @@ Payload Parameters:
                     
                     <div className="absolute inset-0 rounded-full border-2 border-white/10 bg-[#090909] flex items-center justify-center overflow-hidden shadow-inner">
                       <img 
-                        src="/profile.png" 
+                        src="https://github.com/Yashwant00CR7.png" 
                         alt="Yashwant K Profile" 
                         className="w-full h-full object-cover" 
                       />
