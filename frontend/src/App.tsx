@@ -719,7 +719,7 @@ export default function App() {
     html = html.replace(/^## (.*?)$/gm, '<h2 class="text-base font-bold text-white mt-6 mb-3 border-b border-white/10 pb-1.5">$1</h2>');
     html = html.replace(/^# (.*?)$/gm, '<h1 class="text-lg font-extrabold text-white mt-8 mb-4">$1</h1>');
     html = html.replace(/^\s*-\s+(.*?)$/gm, '<li class="text-slate-300 list-disc list-inside ml-4 py-0.5">$1</li>');
-    html = html.replace(/`([^`\n]+)`/g, '<code class="bg-white/10 text-indigo-300 px-1.5 py-0.5 rounded font-mono text-xs font-semibold">$1</code>');
+    html = html.replace(/`([^`\n]+)`/g, '<code class="bg-white/10 text-white px-1.5 py-0.5 rounded font-mono text-xs font-semibold">$1</code>');
     html = html.replace(/\*\*([\s\S]*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
     
     return html.split('\n\n').map(p => {
@@ -745,7 +745,7 @@ export default function App() {
       if (pipelineStep === nodeId) {
         if (nodeId === 'healing') return 'stroke-red-500 fill-red-950/20';
         if (nodeId === 'success') return 'stroke-emerald-500 fill-emerald-950/20';
-        return 'stroke-brand-blue fill-blue-950/20';
+        return 'stroke-white fill-white/10';
       }
       const isPast = nodes.findIndex(n => n.id === pipelineStep) > nodes.findIndex(n => n.id === nodeId);
       if (isPast && pipelineStep !== 'error') {
@@ -759,7 +759,7 @@ export default function App() {
       if (pipelineStep === nodeId) {
         if (nodeId === 'healing') return 'text-red-400 font-bold';
         if (nodeId === 'success') return 'text-emerald-400 font-bold';
-        return 'text-brand-blue font-bold';
+        return 'text-white font-bold';
       }
       const isPast = nodes.findIndex(n => n.id === pipelineStep) > nodes.findIndex(n => n.id === nodeId);
       if (isPast) return 'text-emerald-500';
@@ -767,7 +767,7 @@ export default function App() {
     };
 
     return (
-      <div className="flex flex-col gap-2 p-3 bg-[#0d111b] border border-white/5 rounded-xl">
+      <div className="flex flex-col gap-2 p-3 bg-[#080808] border border-white/5 rounded-xl">
         <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">LangGraph Agent Loop Visualizer</span>
         <div className="flex items-center justify-between gap-1 overflow-x-auto py-2">
           {nodes.map((node, idx) => {
@@ -778,7 +778,7 @@ export default function App() {
                 <div className="flex flex-col items-center gap-1.5 min-w-[70px]">
                   <div className={`relative w-9 h-9 rounded-full border flex items-center justify-center transition-all duration-300 ${getPulseColor(node.id)} ${isActive ? 'animate-pulse scale-105 shadow-[0_0_12px_rgba(37,99,235,0.2)]' : ''}`}>
                     {isActive ? (
-                      <Sparkles className="w-4 h-4 text-indigo-400 animate-spin" />
+                      <Sparkles className="w-4 h-4 text-white animate-spin" />
                     ) : isPast ? (
                       <Check className="w-4 h-4 text-emerald-400" />
                     ) : (
@@ -790,7 +790,7 @@ export default function App() {
                 {idx < nodes.length - 1 && (
                   <div className="flex-grow h-0.5 min-w-[15px] bg-white/5 relative">
                     {isPast && <div className="absolute inset-0 bg-emerald-500 transition-all duration-500" style={{ width: '100%' }} />}
-                    {isActive && <div className="absolute inset-0 bg-brand-blue animate-pulse" style={{ width: '100%' }} />}
+                    {isActive && <div className="absolute inset-0 bg-white animate-pulse" style={{ width: '100%' }} />}
                   </div>
                 )}
               </React.Fragment>
@@ -809,22 +809,22 @@ export default function App() {
   // -------------------------------------------------------------
   if (view === 'landing') {
     return (
-      <div className="min-h-screen bg-[#03060f] text-slate-100 font-sans relative overflow-x-hidden flex flex-col justify-between">
+      <div className="min-h-screen bg-[#050505] text-slate-100 font-sans relative overflow-x-hidden flex flex-col justify-between">
         
         {/* Ambient background glows */}
-        <div className="absolute top-0 inset-x-0 h-[600px] bg-gradient-to-b from-blue-900/10 via-indigo-900/5 to-transparent pointer-events-none z-0" />
-        <div className="absolute top-[20vh] -left-40 w-[500px] h-[500px] rounded-full bg-indigo-500/5 blur-[120px] aurora-glow-1 pointer-events-none" />
-        <div className="absolute top-[40vh] -right-40 w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[120px] aurora-glow-2 pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 h-[600px] bg-gradient-to-b from-white/[0.02] via-transparent to-transparent pointer-events-none z-0" />
+        <div className="absolute top-[20vh] -left-40 w-[500px] h-[500px] rounded-full bg-zinc-500/[0.02] blur-[120px] aurora-glow-1 pointer-events-none" />
+        <div className="absolute top-[40vh] -right-40 w-[500px] h-[500px] rounded-full bg-zinc-500/[0.02] blur-[120px] aurora-glow-2 pointer-events-none" />
 
         {/* Global floating header */}
-        <header className="max-w-7xl mx-auto w-full z-10 px-6 py-4 flex items-center justify-between border-b border-white/5 backdrop-blur-md bg-[#03060f]/60 sticky top-0">
+        <header className="max-w-7xl mx-auto w-full z-10 px-6 py-4 flex items-center justify-between border-b border-white/5 backdrop-blur-md bg-black/60 sticky top-0">
           {/* Brand/Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-              <Zap className="w-4.5 h-4.5 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-lg shadow-white/10">
+              <Zap className="w-4.5 h-4.5 text-black" />
             </div>
             <span className="font-heading text-lg font-bold tracking-tight text-white select-none">
-              Smart API <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">DevTool</span>
+              Smart API <span className="bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">DevTool</span>
             </span>
           </div>
 
@@ -848,7 +848,7 @@ export default function App() {
             </a>
             <button
               onClick={() => setView('workspace')}
-              className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg transition shadow-md shadow-indigo-500/10 hover:shadow-indigo-500/20 active:scale-[0.98]"
+              className="text-xs font-bold bg-white hover:bg-zinc-200 text-black py-2 px-4 rounded-lg transition shadow-md shadow-white/5 active:scale-[0.98] cursor-pointer"
             >
               Console Workspace
             </button>
@@ -857,14 +857,14 @@ export default function App() {
 
         {/* Main Hero presentation */}
         <main className="max-w-7xl mx-auto text-center py-20 px-6 relative z-10 flex flex-col items-center gap-8 my-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-semibold text-indigo-400 tracking-wide font-mono">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-500/5 border border-white/10 text-xs font-semibold text-zinc-400 tracking-wide font-mono">
             <Shield className="w-3.5 h-3.5" />
             Academic Hackathon Submission
           </div>
 
           <h1 className="font-heading text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.1]">
             Autonomous API Wrapper Generation & <br className="hidden md:block"/>
-            <span className="bg-gradient-to-r from-indigo-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">Self-Healing Integration Sandbox</span>
+            <span className="bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">Self-Healing Integration Sandbox</span>
           </h1>
 
           <p className="text-slate-400 text-sm md:text-base max-w-2xl leading-relaxed">
@@ -874,7 +874,7 @@ export default function App() {
           <div className="flex flex-col sm:flex-row gap-4 mt-2 justify-center">
             <button
               onClick={() => setView('workspace')}
-              className="inline-flex items-center gap-2 font-bold text-sm bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-6 rounded-lg transition shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:scale-[1.01] active:scale-[0.99]"
+              className="inline-flex items-center gap-2 font-bold text-sm bg-white hover:bg-zinc-200 text-black py-3 px-6 rounded-lg transition shadow-lg shadow-white/5 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
             >
               Launch Workspace Console
               <ArrowRight className="w-4 h-4" />
@@ -883,7 +883,7 @@ export default function App() {
               href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 font-bold text-sm bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white py-3 px-6 rounded-lg transition hover:scale-[1.01] active:scale-[0.99]"
+              className="inline-flex items-center justify-center gap-2 font-bold text-sm bg-zinc-900 border border-white/10 text-slate-300 hover:bg-zinc-800 py-3 px-6 rounded-lg transition hover:scale-[1.01] active:scale-[0.99]"
             >
               Open Cloud Site
               <ExternalLink className="w-4 h-4" />
@@ -891,17 +891,17 @@ export default function App() {
           </div>
 
           {/* TECH COMPONENT LOGOS SCROLLING TICKER */}
-          <section className="w-full border-y border-white/5 py-6 bg-slate-950/20 overflow-hidden relative select-none mt-12 mb-8">
+          <section className="w-full border-y border-white/5 py-6 bg-zinc-950/20 overflow-hidden relative select-none mt-12 mb-8">
             <div className="flex w-[200%] gap-12 items-center animate-infinite-scroll">
               {Array(2).fill([
-                { name: 'FastAPI', icon: <Layers className="w-4 h-4 text-emerald-400" /> },
-                { name: 'LangGraph', icon: <Cpu className="w-4 h-4 text-purple-400" /> },
-                { name: 'Firecrawl', icon: <Zap className="w-4 h-4 text-orange-400" /> },
-                { name: 'Ollama', icon: <Database className="w-4 h-4 text-yellow-400" /> },
-                { name: 'Google Gemini', icon: <Sparkles className="w-4 h-4 text-blue-400" /> },
-                { name: 'Python', icon: <Code className="w-4 h-4 text-cyan-400" /> },
-                { name: 'React', icon: <Layers className="w-4 h-4 text-cyan-400" /> },
-                { name: 'TypeScript', icon: <FileCode className="w-4 h-4 text-blue-500" /> }
+                { name: 'FastAPI', icon: <Layers className="w-4 h-4 text-zinc-400" /> },
+                { name: 'LangGraph', icon: <Cpu className="w-4 h-4 text-zinc-400" /> },
+                { name: 'Firecrawl', icon: <Zap className="w-4 h-4 text-zinc-400" /> },
+                { name: 'Ollama', icon: <Database className="w-4 h-4 text-zinc-400" /> },
+                { name: 'Google Gemini', icon: <Sparkles className="w-4 h-4 text-zinc-400" /> },
+                { name: 'Python', icon: <Code className="w-4 h-4 text-zinc-400" /> },
+                { name: 'React', icon: <Layers className="w-4 h-4 text-zinc-400" /> },
+                { name: 'TypeScript', icon: <FileCode className="w-4 h-4 text-zinc-400" /> }
               ]).flat().map((tech, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-xs font-mono font-bold text-slate-400 tracking-wider">
                   {tech.icon}
@@ -912,10 +912,10 @@ export default function App() {
           </section>
 
           {/* Interactive Simulation Module (Hero is a Thesis) */}
-          <div className="w-full max-w-4xl border border-white/10 bg-slate-950/40 backdrop-blur-md rounded-2xl overflow-hidden shadow-2xl relative">
+          <div className="w-full max-w-4xl border border-white/10 bg-[#0e0e0e]/50 backdrop-blur-md rounded-2xl overflow-hidden shadow-2xl relative">
             
             {/* Header bar of mock IDE */}
-            <div className="bg-[#0b0f17] border-b border-white/10 px-5 py-3.5 flex items-center justify-between">
+            <div className="bg-[#121212] border-b border-white/10 px-5 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="flex gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
@@ -929,10 +929,10 @@ export default function App() {
                 <button
                   onClick={runDemoSimulation}
                   disabled={simRunning}
-                  className={`px-3 py-1 text-xs font-mono rounded border flex items-center gap-1.5 transition ${
+                  className={`px-3 py-1 text-xs font-mono rounded border flex items-center gap-1.5 transition cursor-pointer ${
                     simRunning 
-                      ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' 
-                      : 'bg-indigo-600/10 border-indigo-600/30 text-indigo-400 hover:bg-indigo-600/20'
+                      ? 'bg-white/10 border-white/20 text-white' 
+                      : 'bg-white/5 border border-white/15 text-white hover:bg-white/10'
                   }`}
                 >
                   <Play className={`w-3 h-3 ${simRunning ? 'animate-spin' : ''}`} />
@@ -945,10 +945,10 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-12 min-h-[380px] text-left">
               
               {/* Left Column: Visual Agent Pipeline Flowchart (5 cols) */}
-              <div className="md:col-span-5 border-r border-white/5 p-6 bg-slate-950/20 flex flex-col justify-between">
+              <div className="md:col-span-5 border-r border-white/5 p-6 bg-[#080808]/20 flex flex-col justify-between">
                 <div>
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5 font-mono">
-                    <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+                    <Cpu className="w-3.5 h-3.5 text-white" />
                     Agent State Workflow
                   </div>
                   
@@ -972,7 +972,7 @@ export default function App() {
                       
                       let bulletColor = 'border-white/10 bg-slate-900 text-slate-500';
                       if (isActive) {
-                        bulletColor = isFailed ? 'border-red-500 bg-red-950/20 text-red-400 font-bold' : 'border-indigo-500 bg-indigo-950/20 text-indigo-400 font-bold animate-pulse';
+                        bulletColor = isFailed ? 'border-red-500 bg-red-950/20 text-red-400 font-bold' : 'border-white bg-white/10 text-white font-bold animate-pulse';
                       } else if (isCompleted) {
                         bulletColor = 'border-emerald-500 bg-emerald-950/20 text-emerald-400';
                       }
@@ -1004,12 +1004,12 @@ export default function App() {
               </div>
               
               {/* Right Column: Code & Log tab views (7 cols) */}
-              <div className="md:col-span-7 flex flex-col min-w-0 bg-[#06080e]/60">
+              <div className="md:col-span-7 flex flex-col min-w-0 bg-[#080808]/60">
                 {/* Tabs */}
-                <div className="flex bg-[#0a0d15] border-b border-white/5 p-1 gap-1">
+                <div className="flex bg-[#0d0d0d] border-b border-white/5 p-1 gap-1">
                   <button
                     onClick={() => setSimTab('logs')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold rounded-lg transition ${
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold rounded-lg transition cursor-pointer ${
                       simTab === 'logs' ? 'bg-white/5 text-white' : 'text-slate-500 hover:text-slate-300'
                     }`}
                   >
@@ -1018,7 +1018,7 @@ export default function App() {
                   </button>
                   <button
                     onClick={() => setSimTab('code')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold rounded-lg transition ${
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold rounded-lg transition cursor-pointer ${
                       simTab === 'code' ? 'bg-white/5 text-white' : 'text-slate-500 hover:text-slate-300'
                     }`}
                   >
@@ -1034,12 +1034,12 @@ export default function App() {
                       {simLogs.map((log, idx) => {
                         let typeColor = 'text-slate-400';
                         if (log.startsWith('[System]')) typeColor = 'text-slate-400';
-                        else if (log.startsWith('[Scraper]')) typeColor = 'text-cyan-400';
-                        else if (log.startsWith('[Agent]')) typeColor = 'text-indigo-300';
+                        else if (log.startsWith('[Scraper]')) typeColor = 'text-zinc-400';
+                        else if (log.startsWith('[Agent]')) typeColor = 'text-white';
                         else if (log.indexOf('FAILURE') !== -1) typeColor = 'text-red-400';
                         else if (log.indexOf('SUCCESS') !== -1) typeColor = 'text-emerald-400';
-                        else if (log.startsWith('[Sandbox]')) typeColor = 'text-amber-300';
-                        else if (log.startsWith('[Self-Healer]')) typeColor = 'text-indigo-400 font-bold';
+                        else if (log.startsWith('[Sandbox]')) typeColor = 'text-zinc-400';
+                        else if (log.startsWith('[Self-Healer]')) typeColor = 'text-white font-bold';
                         
                         return (
                           <div key={idx} className={`${typeColor} leading-relaxed`}>
@@ -1140,21 +1140,21 @@ class StripeChargesAPI:
                       onClick={() => setSelectedCapability(item.id)}
                       className={`p-5 rounded-xl border cursor-pointer transition-all duration-200 text-left relative ${
                         isActive
-                          ? 'bg-indigo-650/10 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.08)]'
-                          : 'bg-slate-950/20 border-white/5 hover:bg-slate-950/40 hover:border-white/10'
+                          ? 'bg-white/[0.03] border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.02)]'
+                          : 'bg-zinc-950/20 border-white/5 hover:bg-zinc-950/40 hover:border-white/10'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-colors ${
                           isActive 
-                            ? 'bg-indigo-500/15 border-indigo-400 text-indigo-400' 
+                            ? 'bg-white/10 border-white/30 text-white' 
                             : 'bg-white/5 border-white/10 text-slate-500'
                         }`}>
                           {item.icon}
                         </div>
                         <span className={`text-[8px] font-mono font-bold px-2 py-0.5 rounded ${
                           isActive 
-                            ? 'bg-indigo-500/20 text-indigo-300' 
+                            ? 'bg-white/10 text-white' 
                             : 'bg-white/5 text-slate-500'
                         }`}>
                           {item.badge}
@@ -1170,32 +1170,32 @@ class StripeChargesAPI:
               </div>
 
               {/* Right Panel Viewport (7 cols) */}
-              <div className="md:col-span-7 flex flex-col min-h-[380px] bg-[#06080e]/60 border border-white/10 rounded-xl overflow-hidden shadow-2xl relative">
+              <div className="md:col-span-7 flex flex-col min-h-[380px] bg-[#080808]/60 border border-white/10 rounded-xl overflow-hidden shadow-2xl relative">
                 {/* Header of Viewport */}
-                <div className="bg-[#0b0f17] border-b border-white/10 px-4 py-3 flex items-center justify-between">
+                <div className="bg-[#121212] border-b border-white/10 px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-slate-750" />
-                    <span className="w-2 h-2 rounded-full bg-slate-750" />
-                    <span className="w-2 h-2 rounded-full bg-slate-750" />
+                    <span className="w-2 h-2 rounded-full bg-slate-755" />
+                    <span className="w-2 h-2 rounded-full bg-slate-755" />
+                    <span className="w-2 h-2 rounded-full bg-slate-755" />
                   </div>
                   <span className="text-[10px] text-slate-500 font-mono">
                     {selectedCapability === 'scraper' && 'scraper-engine://crawler.log'}
                     {selectedCapability === 'healer' && 'agent-healer://diff-patch.log'}
                     {selectedCapability === 'sandbox' && 'sandbox-sandbox://pytest.stdout'}
                   </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
 
                 {/* Viewport Content */}
                 <div className="p-5 flex-grow overflow-y-auto">
                   {selectedCapability === 'scraper' && (
                     <div className="font-mono text-[10px] text-slate-300 space-y-1.5 text-left">
-                      <div className="text-cyan-400 font-bold">$ curl -X GET "https://api.stripe.com/v1/charges"</div>
+                      <div className="text-zinc-400 font-bold">$ curl -X GET "https://api.stripe.com/v1/charges"</div>
                       <div className="text-slate-500">HTTP/1.1 200 OK</div>
                       <div className="text-slate-500">Content-Type: application/json</div>
                       <div className="text-slate-500">Content-Length: 1424</div>
                       <div className="text-slate-400 mt-3 font-semibold font-sans">Scraped REST Specification Markdown:</div>
-                      <div className="bg-[#0a0d14] p-3 rounded-lg border border-white/5 text-slate-400 leading-normal">
+                      <div className="bg-black/40 p-3 rounded-lg border border-white/5 text-slate-400 leading-normal">
                         <pre className="overflow-x-auto whitespace-pre-wrap">{`# Charges API
 POST /v1/charges
 Headers:
@@ -1214,9 +1214,9 @@ Payload Parameters:
 
                   {selectedCapability === 'healer' && (
                     <div className="font-mono text-[10px] text-slate-300 space-y-1.5 text-left">
-                      <div className="text-indigo-400 font-bold">Traceback detected: NameError: name 'requests' is not defined</div>
+                      <div className="text-white font-bold">Traceback detected: NameError: name 'requests' is not defined</div>
                       <div className="text-slate-500">Analyzing syntax rules... Applying self-healing git diff patch.</div>
-                      <div className="bg-[#0a0d14] p-3 rounded-lg border border-white/5 text-slate-400 leading-normal space-y-0.5 overflow-x-auto">
+                      <div className="bg-black/40 p-3 rounded-lg border border-white/5 text-slate-400 leading-normal space-y-0.5 overflow-x-auto">
                         <div className="text-slate-600">@@ -1,5 +1,6 @@</div>
                         <div className="text-emerald-400 bg-emerald-950/20 font-bold px-1 rounded-sm">+ import requests</div>
                         <div className="text-slate-400">  class StripeChargesAPI:</div>
@@ -1229,7 +1229,7 @@ Payload Parameters:
                         <div className="text-emerald-400 bg-emerald-950/20 font-bold px-1 rounded-sm">+         except requests.exceptions.RequestException as e:</div>
                         <div className="text-emerald-400 bg-emerald-950/20 font-bold px-1 rounded-sm">+             raise RuntimeError(e)</div>
                       </div>
-                      <div className="text-[9px] text-indigo-400 border-t border-white/5 pt-2 flex justify-between items-center mt-4">
+                      <div className="text-[9px] text-zinc-400 border-t border-white/5 pt-2 flex justify-between items-center mt-4">
                         <span>REPAIR ROUTINE: SUCCESSFUL</span>
                         <span>ATTEMPTS: 1/3</span>
                       </div>
@@ -1238,7 +1238,7 @@ Payload Parameters:
 
                   {selectedCapability === 'sandbox' && (
                     <div className="font-mono text-[10px] text-slate-300 space-y-1.5 text-left">
-                      <div className="text-amber-400 font-bold">$ pytest test_client.py</div>
+                      <div className="text-zinc-300 font-bold">$ pytest test_client.py</div>
                       <div className="text-slate-400">=================== test session starts ===================</div>
                       <div className="text-slate-500">platform win32 -- Python 3.12.1, pytest-8.0.2</div>
                       <div className="text-slate-500">plugins: asyncio-0.23.5, cov-4.1.0</div>
@@ -1264,7 +1264,7 @@ Payload Parameters:
           {/* DEPLOYMENT TIERS COMPARISON */}
           <section id="comparison" className="w-full py-16 border-t border-white/5">
             <div className="text-center mb-12">
-              <span className="text-[10px] font-bold text-indigo-400 font-mono uppercase tracking-wider">[02] OPERATIONAL EXECUTION TIERS</span>
+              <span className="text-[10px] font-bold text-zinc-400 font-mono uppercase tracking-wider">[02] OPERATIONAL EXECUTION TIERS</span>
               <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-white mt-2">Operational Execution Tiers</h2>
               <p className="text-slate-400 text-xs mt-2 max-w-md mx-auto font-sans">Compare deployment options: run locally offline or scale on hybrid cloud models.</p>
             </div>
@@ -1272,48 +1272,48 @@ Payload Parameters:
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto text-left">
               
               {/* Local Stack Card */}
-              <div className="glass-panel p-8 rounded-2xl border border-white/5 flex flex-col justify-between bg-slate-950/20 glass-card-hover">
+              <div className="glass-panel p-8 rounded-2xl border border-white/5 flex flex-col justify-between bg-[#0e0e0e]/20 glass-card-hover">
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-xs font-bold text-slate-400 uppercase font-mono">Local Stack</span>
-                    <span className="text-xs font-extrabold text-cyan-400 uppercase bg-cyan-950/20 border border-cyan-800/30 px-2 py-0.5 rounded font-mono">Free</span>
+                    <span className="text-xs font-extrabold text-zinc-300 uppercase bg-white/5 border border-white/10 px-2 py-0.5 rounded font-mono">Free</span>
                   </div>
                   <h3 className="font-heading text-2xl font-bold text-white mb-3">Offline Privacy</h3>
                   <p className="text-slate-400 text-xs leading-relaxed mb-6">
-                    Configure your system with local Ollama runtimes using models like qwen2.5-coder. No API keys needed, zero rate limits, and absolute workspace privacy.
+                    Configure your system with local Ollama runtimes using models like qwen2.5-coder. No API keys needed, zero rate limits, and workspace privacy.
                   </p>
                   <ul className="space-y-2.5 text-xs text-slate-300">
                     <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                      <Check className="w-4 h-4 text-white flex-shrink-0" />
                       Local Ollama Runtimes Support
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                      <Check className="w-4 h-4 text-white flex-shrink-0" />
                       Raw markdown text pasting fallback
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                      <Check className="w-4 h-4 text-white flex-shrink-0" />
                       Local sandbox validations
                     </li>
                   </ul>
                 </div>
                 <button 
                   onClick={() => setView('workspace')}
-                  className="w-full text-center text-xs font-bold py-3 border border-white/10 hover:border-cyan-500/30 rounded-xl bg-white/5 hover:text-white transition mt-8"
+                  className="w-full text-center text-xs font-bold py-3 border border-white/10 hover:border-white/20 rounded-xl bg-white/5 hover:text-white transition mt-8 cursor-pointer"
                 >
                   Configure Local Mode
                 </button>
               </div>
 
               {/* Cloud Tiers Card */}
-              <div className="glass-panel p-8 rounded-2xl border-2 border-indigo-500 flex flex-col justify-between shadow-xl shadow-indigo-500/5 relative overflow-hidden bg-slate-950/40">
-                <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[9px] font-extrabold px-3 py-1 uppercase rounded-bl-lg tracking-wider font-mono">
+              <div className="glass-panel p-8 rounded-2xl border-2 border-white flex flex-col justify-between shadow-xl shadow-white/5 relative overflow-hidden bg-black">
+                <div className="absolute top-0 right-0 bg-white text-black text-[9px] font-extrabold px-3 py-1 uppercase rounded-bl-lg tracking-wider font-mono">
                   Recommended
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-xs font-bold text-slate-400 uppercase font-mono">Hybrid Cloud</span>
-                    <span className="text-xs font-extrabold text-indigo-400 uppercase bg-indigo-950/20 border border-indigo-800/30 px-2 py-0.5 rounded font-mono">SaaS Power</span>
+                    <span className="text-xs font-extrabold text-zinc-100 uppercase bg-white/10 border border-white/20 px-2 py-0.5 rounded font-mono">SaaS Power</span>
                   </div>
                   <h3 className="font-heading text-2xl font-bold text-white mb-3">Cloud Reasoning</h3>
                   <p className="text-slate-400 text-xs leading-relaxed mb-6">
@@ -1321,15 +1321,15 @@ Payload Parameters:
                   </p>
                   <ul className="space-y-2.5 text-xs text-slate-300">
                     <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                      <Check className="w-4 h-4 text-white flex-shrink-0" />
                       Google Gemini & Groq APIs Integration
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                      <Check className="w-4 h-4 text-white flex-shrink-0" />
                       Cloud Firecrawl dynamic URL scrapers
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                      <Check className="w-4 h-4 text-white flex-shrink-0" />
                       Subprocess self-healing compiler loops
                     </li>
                   </ul>
@@ -1338,7 +1338,7 @@ Payload Parameters:
                   href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full text-center text-xs font-bold py-3 bg-indigo-600 text-white rounded-xl hover:opacity-90 transition mt-8 shadow-md shadow-indigo-500/10 block"
+                  className="w-full text-center text-xs font-bold py-3 bg-white text-black rounded-xl hover:bg-zinc-200 transition mt-8 shadow-md block"
                 >
                   Launch Hosted Workspace
                 </a>
@@ -1350,40 +1350,41 @@ Payload Parameters:
           {/* DEVELOPER TEAM PROFILE (PLACEMENT HACKATHON FOCUS CARD) */}
           <section id="team" className="w-full py-16 border-t border-white/5 relative overflow-hidden">
             {/* Ambient Background Glows */}
-            <div className="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-indigo-500/5 blur-[80px] pointer-events-none" />
-            <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-purple-500/5 blur-[80px] pointer-events-none" />
+            <div className="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-zinc-500/[0.02] blur-[80px] pointer-events-none" />
+            <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-zinc-500/[0.02] blur-[80px] pointer-events-none" />
 
             <div className="text-center mb-12">
-              <span className="text-[10px] font-bold text-indigo-400 font-mono uppercase tracking-wider">[03] SYSTEM DEVELOPER</span>
+              <span className="text-[10px] font-bold text-zinc-400 font-mono uppercase tracking-wider">[03] SYSTEM DEVELOPER</span>
               <h2 className="font-heading text-3xl md:text-4xl font-extrabold text-white mt-2">The Engineering Team</h2>
             </div>
 
-            <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 bg-[#03060f]/60 rounded-2xl border border-white/10 shadow-2xl overflow-hidden relative backdrop-blur-md">
+            <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 bg-black/60 rounded-2xl border border-white/10 shadow-2xl overflow-hidden relative backdrop-blur-md">
               {/* Technical gridded blueprint background overlay */}
               <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:14px_14px] pointer-events-none opacity-50" />
               
               {/* Sleek top indicator line */}
-              <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+              <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-white via-zinc-400 to-zinc-700" />
               
               {/* Left Panel: Profile and Social Links */}
               <div className="col-span-1 md:col-span-5 p-8 flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/10 relative z-10">
                 <div>
                   {/* Glowing Avatar Ring */}
                   <div className="relative w-24 h-24 mb-6">
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 opacity-20 blur-sm animate-pulse" />
-                    <div className="absolute -inset-1.5 rounded-full border border-dashed border-indigo-500/30 animate-[spin_20s_linear_infinite]" />
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white to-zinc-500 opacity-20 blur-sm animate-pulse" />
+                    <div className="absolute -inset-1.5 rounded-full border border-dashed border-white/30 animate-[spin_20s_linear_infinite]" />
                     
-                    <div className="absolute inset-0 rounded-full border-2 border-white/10 bg-slate-900 flex items-center justify-center text-slate-400 overflow-hidden shadow-inner">
-                      <div className="flex flex-col items-center">
-                        <Code className="w-8 h-8 text-indigo-400 mb-0.5" />
-                        <span className="font-mono text-[9px] text-purple-400 font-bold uppercase">yash_k</span>
-                      </div>
+                    <div className="absolute inset-0 rounded-full border-2 border-white/10 bg-[#090909] flex items-center justify-center overflow-hidden shadow-inner">
+                      <img 
+                        src="/profile.png" 
+                        alt="Yashwant K Profile" 
+                        className="w-full h-full object-cover" 
+                      />
                     </div>
                     
                     {/* Active Status Badge Pulse */}
                     <span className="absolute bottom-0 right-0 flex h-4 w-4">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-slate-950 flex items-center justify-center">
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-[#050505] flex items-center justify-center">
                         <span className="block h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                       </span>
                     </span>
@@ -1394,13 +1395,16 @@ Payload Parameters:
                       <h3 className="font-heading text-2xl font-bold text-white tracking-tight">Yashwant K</h3>
                       <span className="px-2 py-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-400/10 border border-emerald-500/20 rounded-full font-mono uppercase tracking-wider">Active</span>
                     </div>
-                    <p className="font-mono text-xs text-indigo-400 font-semibold tracking-wide uppercase">System Architect & Agentic Dev</p>
-                    <div className="space-y-1 mt-3 text-slate-400 text-xs font-sans">
-                      <p className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />
+                    <p className="font-mono text-xs text-white font-semibold tracking-wide uppercase">System Architect & Agentic Dev</p>
+                    <div className="space-y-1 mt-3 text-zinc-400 text-xs font-sans">
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white flex-shrink-0" />
                         <span>Sri Shakthi Institute of Eng & Tech</span>
-                      </p>
-                      <div className="text-slate-500 text-[11px] pl-3.5 italic">CS Undergraduate, 4th Year</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-transparent flex-shrink-0" />
+                        <span className="text-zinc-500 text-[11px] italic">CS Undergraduate, 4th Year</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1411,18 +1415,18 @@ Payload Parameters:
                     href="https://github.com/Yashwant00CR7"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 text-xs font-mono font-bold border border-white/5 hover:border-indigo-500/30 rounded-xl py-3 px-4 bg-white/[0.01] hover:bg-indigo-500/[0.04] text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
+                    className="flex items-center justify-center gap-2 text-xs font-mono font-bold border border-white/5 hover:border-white/30 rounded-xl py-3 px-4 bg-white/[0.01] hover:bg-white/[0.04] text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
                   >
-                    <Code className="w-4 h-4 text-indigo-400" />
+                    <Code className="w-4 h-4 text-white" />
                     <span>GitHub</span>
                   </a>
                   <a
                     href="https://www.linkedin.com/in/yashwant00cr7/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 text-xs font-mono font-bold border border-white/5 hover:border-cyan-500/30 rounded-xl py-3 px-4 bg-white/[0.01] hover:bg-cyan-500/[0.04] text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
+                    className="flex items-center justify-center gap-2 text-xs font-mono font-bold border border-white/5 hover:border-white/30 rounded-xl py-3 px-4 bg-white/[0.01] hover:bg-white/[0.04] text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-cyan-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-white">
                       <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
                       <rect x="2" y="9" width="4" height="12"></rect>
                       <circle cx="4" cy="4" r="2"></circle>
@@ -1433,32 +1437,32 @@ Payload Parameters:
                     href="https://yashwantk.vercel.app/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 text-xs font-mono font-bold border border-white/5 hover:border-purple-500/30 rounded-xl py-3 px-4 bg-white/[0.01] hover:bg-purple-500/[0.04] text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
+                    className="flex items-center justify-center gap-2 text-xs font-mono font-bold border border-white/5 hover:border-white/30 rounded-xl py-3 px-4 bg-white/[0.01] hover:bg-white/[0.04] text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
                   >
-                    <Globe className="w-4 h-4 text-purple-400" />
+                    <Globe className="w-4 h-4 text-white" />
                     <span>Portfolio</span>
                   </a>
                   <a
                     href="mailto:yashwant.k.dev@gmail.com"
-                    className="flex items-center justify-center gap-2 text-xs font-mono font-bold border border-white/5 hover:border-pink-500/30 rounded-xl py-3 px-4 bg-white/[0.01] hover:bg-pink-500/[0.04] text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
+                    className="flex items-center justify-center gap-2 text-xs font-mono font-bold border border-white/5 hover:border-white/30 rounded-xl py-3 px-4 bg-white/[0.01] hover:bg-white/[0.04] text-slate-300 hover:text-white transition-all duration-300 shadow-sm"
                   >
-                    <Mail className="w-4 h-4 text-pink-400" />
+                    <Mail className="w-4 h-4 text-white" />
                     <span>Email</span>
                   </a>
                 </div>
               </div>
 
               {/* Right Panel: Interactive Code Viewport / Terminal */}
-              <div className="col-span-1 md:col-span-7 p-6 md:p-8 flex flex-col justify-center relative z-10 bg-slate-950/20">
-                <div className="w-full flex-grow flex flex-col border border-white/10 rounded-xl overflow-hidden bg-[#050814]/90 shadow-2xl relative font-mono text-[11px] leading-relaxed">
+              <div className="col-span-1 md:col-span-7 p-6 md:p-8 flex flex-col justify-center relative z-10 bg-[#080808]/20">
+                <div className="w-full flex-grow flex flex-col border border-white/10 rounded-xl overflow-hidden bg-[#080808]/95 shadow-2xl relative font-mono text-[11px] leading-relaxed">
                   {/* Tab Bar */}
-                  <div className="flex items-center justify-between border-b border-white/10 bg-[#070b1b]/80 px-4 py-2">
+                  <div className="flex items-center justify-between border-b border-white/10 bg-[#0d0d0d]/90 px-4 py-2">
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => setActiveDossierTab('json')}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-t-lg transition-all text-[11px] cursor-pointer ${
                           activeDossierTab === 'json'
-                            ? 'bg-[#050814] text-indigo-400 border-t-2 border-indigo-500 font-bold'
+                            ? 'bg-[#080808] text-white border-t-2 border-white font-bold'
                             : 'text-slate-500 hover:text-slate-300'
                         }`}
                       >
@@ -1469,7 +1473,7 @@ Payload Parameters:
                         onClick={() => setActiveDossierTab('sh')}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-t-lg transition-all text-[11px] cursor-pointer ${
                           activeDossierTab === 'sh'
-                            ? 'bg-[#050814] text-amber-400 border-t-2 border-amber-500 font-bold'
+                            ? 'bg-[#080808] text-white border-t-2 border-zinc-400 font-bold'
                             : 'text-slate-500 hover:text-slate-300'
                         }`}
                       >
@@ -1486,7 +1490,7 @@ Payload Parameters:
                   </div>
 
                   {/* Editor Window Body with Smooth Animated Tab Switching & Line Numbers */}
-                  <div className="p-5 flex-grow overflow-y-auto max-h-[300px] text-slate-300 bg-[#050814]/50 select-text min-h-[220px] text-left">
+                  <div className="p-5 flex-grow overflow-y-auto max-h-[300px] text-slate-300 bg-[#050505]/50 select-text min-h-[220px] text-left">
                     <AnimatePresence mode="wait">
                       {activeDossierTab === 'json' ? (
                         <motion.div
@@ -1555,9 +1559,9 @@ Payload Parameters:
                             <p className="text-emerald-400">[OK] PORTFOLIO: <a href="https://yashwantk.vercel.app/" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition">yashwantk.vercel.app</a></p>
                             <p className="text-emerald-400">[OK] LINKEDIN: <a href="https://www.linkedin.com/in/yashwant00cr7/" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition">linkedin.com/in/yashwant00cr7</a></p>
                             <p className="text-emerald-400">[OK] GITHUB: <a href="https://github.com/Yashwant00CR7" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition">github.com/Yashwant00CR7</a></p>
-                            <p className="text-blue-400">[INFO] Compiling local test sandboxes...</p>
+                            <p className="text-zinc-400">[INFO] Compiling local test sandboxes...</p>
                             <p className="text-emerald-400">[OK] Sandbox compiler execution verified.</p>
-                            <p className="text-purple-400 animate-pulse">[READY] Status: Live System Architect active</p>
+                            <p className="text-white animate-pulse">[READY] Status: Live System Architect active</p>
                           </div>
                         </motion.div>
                       )}
@@ -1571,7 +1575,7 @@ Payload Parameters:
         </main>
 
         {/* Global Footer */}
-        <footer className="border-t border-white/5 pt-16 pb-8 relative z-10 w-full bg-[#03060f]/90 backdrop-blur-md">
+        <footer className="border-t border-white/5 pt-16 pb-8 relative z-10 w-full bg-[#050505]/95 backdrop-blur-md">
           <div className="max-w-7xl mx-auto px-6">
             {/* Top Grid */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8 mb-12">
@@ -1579,7 +1583,7 @@ Payload Parameters:
               {/* Column 1: Brand (4 cols) */}
               <div className="md:col-span-4 space-y-4">
                 <div className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-indigo-400 animate-pulse" />
+                  <Zap className="w-5 h-5 text-white animate-pulse" />
                   <span className="font-heading font-bold text-white text-base">Smart API DevTool</span>
                 </div>
                 <p className="text-slate-400 text-xs leading-relaxed max-w-sm">
@@ -1596,7 +1600,7 @@ Payload Parameters:
                       href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool" 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="hover:text-indigo-400 transition flex items-center gap-1"
+                      className="hover:text-white transition flex items-center gap-1"
                     >
                       Hugging Face Space
                       <ExternalLink className="w-3 h-3 text-slate-500" />
@@ -1605,7 +1609,7 @@ Payload Parameters:
                   <li>
                     <button 
                       onClick={() => setView('workspace')} 
-                      className="hover:text-indigo-400 transition cursor-pointer text-left"
+                      className="hover:text-white transition cursor-pointer text-left"
                     >
                       Workspace Console
                     </button>
@@ -1615,7 +1619,7 @@ Payload Parameters:
                       href="https://github.com/Yashwant00CR7" 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="hover:text-indigo-400 transition"
+                      className="hover:text-white transition"
                     >
                       GitHub Repository
                     </a>
@@ -1628,19 +1632,19 @@ Payload Parameters:
                 <h4 className="text-white text-xs font-mono font-bold uppercase tracking-wider">Core Standards</h4>
                 <ul className="space-y-2 text-xs text-slate-400 font-sans">
                   <li className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500/80" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500/80" />
                     Clean Separation of Concerns (SoC)
                   </li>
                   <li className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500/80" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500/80" />
                     LangGraph Stateful Agent Loops
                   </li>
                   <li className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500/80" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500/80" />
                     Isolated Sandbox Verification
                   </li>
                   <li className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500/80" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500/80" />
                     Conventional Commits Spec
                   </li>
                 </ul>
@@ -1666,14 +1670,14 @@ Payload Parameters:
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="relative flex h-2 w-2">
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500 animate-pulse"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-500 animate-pulse"></span>
                     </span>
-                    <span>AGENT STATE: <span className="text-indigo-400 font-bold">STANDBY</span></span>
+                    <span>AGENT STATE: <span className="text-white font-bold">STANDBY</span></span>
                   </div>
                 </div>
                 <div className="border-t border-white/5 pt-3">
                   <span className="text-[10px] text-slate-500 block">Developer Identity:</span>
-                  <a href="#team" className="text-xs text-indigo-400 hover:text-indigo-300 font-bold transition">Yashwant K</a>
+                  <a href="#team" className="text-xs text-white hover:text-zinc-300 font-bold transition">Yashwant K</a>
                 </div>
               </div>
 
@@ -1686,7 +1690,7 @@ Payload Parameters:
               </div>
               <div className="flex items-center gap-3">
                 <span className="px-2 py-0.5 border border-white/5 rounded bg-white/[0.01]">BUILD v2.5.4-STABLE</span>
-                <span className="text-indigo-500/80 font-bold uppercase tracking-widest">// ACADEMIC HACKATHON DELIVERABLE</span>
+                <span className="text-white/80 font-bold uppercase tracking-widest">// ACADEMIC HACKATHON DELIVERABLE</span>
               </div>
             </div>
           </div>
@@ -1699,7 +1703,7 @@ Payload Parameters:
   // FULL-SCREEN WORKSPACE CONSOLE VIEW
   // -------------------------------------------------------------
   return (
-    <div className="h-screen w-screen bg-[#070b13] text-slate-100 font-sans flex flex-col overflow-hidden relative">
+    <div className="h-screen w-screen bg-[#050505] text-slate-100 font-sans flex flex-col overflow-hidden relative">
       
       {/* Settings Drawer overlay */}
       <AnimatePresence>
@@ -1719,7 +1723,7 @@ Payload Parameters:
               animate={{ translateX: 0 }}
               exit={{ translateX: '100%' }}
               transition={{ type: 'tween', duration: 0.25 }}
-              className="relative w-80 bg-slate-900 border-l border-white/10 h-full p-6 flex flex-col justify-between shadow-2xl z-10"
+              className="relative w-80 bg-[#090909] border-l border-white/10 h-full p-6 flex flex-col justify-between shadow-2xl z-10"
             >
               <div className="space-y-6">
                 <div className="flex items-center justify-between border-b border-white/5 pb-3">
@@ -1746,7 +1750,7 @@ Payload Parameters:
                       value={geminiKey}
                       onChange={(e) => handleCredentialChange('gemini', e.target.value)}
                       placeholder="AIzaSy..."
-                      className="w-full bg-black/45 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                      className="w-full bg-black/45 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
                     />
                   </div>
 
@@ -1757,7 +1761,7 @@ Payload Parameters:
                       value={groqKey}
                       onChange={(e) => handleCredentialChange('groq', e.target.value)}
                       placeholder="gsk_..."
-                      className="w-full bg-black/45 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                      className="w-full bg-black/45 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
                     />
                   </div>
 
@@ -1768,7 +1772,7 @@ Payload Parameters:
                       value={openrouterKey}
                       onChange={(e) => handleCredentialChange('openrouter', e.target.value)}
                       placeholder="sk-or-v1-..."
-                      className="w-full bg-black/45 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                      className="w-full bg-black/45 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
                     />
                   </div>
 
@@ -1779,7 +1783,7 @@ Payload Parameters:
                       value={firecrawlKey}
                       onChange={(e) => handleCredentialChange('firecrawl', e.target.value)}
                       placeholder="fc-..."
-                      className="w-full bg-black/45 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                      className="w-full bg-black/45 border border-white/10 rounded-lg py-1.5 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
                     />
                   </div>
                 </div>
@@ -1800,7 +1804,7 @@ Payload Parameters:
                       />
                       <button
                         onClick={handleAddOpenRouterModel}
-                        className="bg-brand-blue hover:bg-blue-700 text-white p-2 rounded-lg transition"
+                        className="bg-white hover:bg-zinc-200 text-black p-2 rounded-lg transition"
                         title="Add Model to Select Dropdown"
                       >
                         <Plus className="w-4 h-4" />
@@ -1821,15 +1825,15 @@ Payload Parameters:
       </AnimatePresence>
 
       {/* TOP NAVIGATION BAR PANEL */}
-      <nav className="bg-slate-950 px-6 py-3 border-b border-white/5 flex items-center justify-between flex-shrink-0 z-20">
+      <nav className="bg-[#090909] px-6 py-3 border-b border-white/5 flex items-center justify-between flex-shrink-0 z-20">
         {/* Left section: Breadcrumbs navigation */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setView('landing')}
-            className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow shadow-indigo-500/25 hover:scale-105 active:scale-95 transition"
+            className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow shadow-white/5 hover:scale-105 active:scale-95 transition"
             title="Return to Homepage"
           >
-            <Zap className="w-4 h-4 text-white" />
+            <Zap className="w-4 h-4 text-black" />
           </button>
           <div className="flex items-center gap-2 text-xs font-mono">
             <span className="text-slate-400 hover:text-white cursor-pointer transition" onClick={() => setView('landing')}>smart-api-devtool</span>
@@ -1854,7 +1858,7 @@ Payload Parameters:
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={`p-1.5 rounded-lg border transition ${
               sidebarOpen 
-                ? 'bg-indigo-600/10 border-indigo-600/25 text-indigo-400' 
+                ? 'bg-white/10 border-white/20 text-white' 
                 : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'
             }`}
             title="Toggle Cache Sidebar"
@@ -1877,7 +1881,7 @@ Payload Parameters:
         
         {/* Left Caching Sidebar */}
         {sidebarOpen && (
-          <div className="w-64 bg-slate-950/60 border-r border-white/5 flex flex-col p-4 flex-shrink-0 select-none">
+          <div className="w-64 bg-[#090909]/60 backdrop-blur-md border-r border-white/5 flex flex-col p-4 flex-shrink-0 select-none">
             <div className="flex items-center justify-between mb-4">
               <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Saved integrations</span>
               <span className="text-xs font-semibold px-2 py-0.5 bg-white/5 border border-white/10 rounded text-slate-400">
@@ -1897,7 +1901,7 @@ Payload Parameters:
                     onClick={() => handleLoadHistoryRecord(item)}
                     className={`group p-3 rounded-lg border text-left cursor-pointer transition duration-150 flex items-center justify-between gap-3 ${
                       currentIntegration?.id === item.id
-                        ? 'bg-brand-blue/10 border-brand-blue/30 shadow-sm'
+                        ? 'bg-white/10 border-white/20 shadow-sm'
                         : 'bg-white/5 border-white/5 hover:bg-white/10'
                     }`}
                   >
@@ -1932,7 +1936,7 @@ Payload Parameters:
 
         {/* Form Inputs Parameter panel */}
         <div
-          className="flex-shrink-0 flex flex-col p-5 overflow-y-auto border-r border-white/5 bg-[#0b0f19]/40"
+          className="flex-shrink-0 flex flex-col p-5 overflow-y-auto border-r border-white/5 bg-[#080808]/40 backdrop-blur-md"
           style={{ width: `${leftWidth}px` }}
         >
           <div className="mb-4">
@@ -1973,7 +1977,7 @@ Payload Parameters:
                     value={apiUrl}
                     onChange={(e) => setApiUrl(e.target.value)}
                     placeholder="https://api.stripe.com/docs/v1"
-                    className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                    className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
                   />
                   <small className="text-[10px] text-slate-500 mt-1 block leading-relaxed">DYNAMIC MARKDOWN PARSER POWERED BY FIRECRAWL.</small>
                 </div>
@@ -1984,7 +1988,7 @@ Payload Parameters:
                     onChange={(e) => setRawDocs(e.target.value)}
                     placeholder="# Charges API&#10;POST /v1/charges&#10;Headers: Authorization Bearer"
                     rows={6}
-                    className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                    className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
                   />
                   <small className="text-[10px] text-slate-500 mt-1 block leading-relaxed">Direct offline markdown document text fallback.</small>
                 </div>
@@ -1999,7 +2003,7 @@ Payload Parameters:
                 onChange={(e) => setUseCase(e.target.value)}
                 placeholder={languagePlaceholders[language]}
                 rows={4}
-                className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-brand-blue"
+                className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
                 required
               />
             </div>
@@ -2011,7 +2015,7 @@ Payload Parameters:
                 <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-brand-blue"
+                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
                 >
                   <option value="python">Python (pytest)</option>
                   <option value="javascript">JavaScript (Node)</option>
@@ -2026,7 +2030,7 @@ Payload Parameters:
                 <select
                   value={modelProvider}
                   onChange={(e) => setModelProvider(e.target.value)}
-                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-brand-blue"
+                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
                 >
                   <option value="gemini">Google Gemini</option>
                   <option value="ollama">Ollama (Local)</option>
@@ -2043,7 +2047,7 @@ Payload Parameters:
                 <select
                   value={geminiModel}
                   onChange={(e) => setGeminiModel(e.target.value)}
-                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-brand-blue"
+                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
                 >
                   <option value="gemini-2.5-flash">Gemini 2.5 Flash (Default)</option>
                   <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
@@ -2062,7 +2066,7 @@ Payload Parameters:
                 <select
                   value={groqModel}
                   onChange={(e) => setGroqModel(e.target.value)}
-                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-brand-blue"
+                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
                 >
                   <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
                   <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
@@ -2079,7 +2083,7 @@ Payload Parameters:
                   <button
                     type="button"
                     onClick={() => setSettingsOpen(true)}
-                    className="text-[9px] text-brand-blue hover:text-blue-400 uppercase font-semibold"
+                    className="text-[9px] text-white hover:text-zinc-300 uppercase font-semibold"
                   >
                     + Add Model ID
                   </button>
@@ -2087,7 +2091,7 @@ Payload Parameters:
                 <select
                   value={openrouterModel}
                   onChange={(e) => setOpenrouterModel(e.target.value)}
-                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-brand-blue"
+                  className="w-full bg-black/45 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
                 >
                   {openrouterCustomModels.map(modelId => (
                     <option key={modelId} value={modelId}>{modelId}</option>
@@ -2099,7 +2103,7 @@ Payload Parameters:
             <button
               type="submit"
               disabled={isGenerating}
-              className="w-full bg-brand-blue hover:bg-blue-700 text-white text-xs font-bold py-3 px-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 relative shadow-lg shadow-blue-500/10"
+              className="w-full bg-white hover:bg-zinc-200 text-black text-xs font-bold py-3 px-4 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 relative shadow-lg shadow-white/5"
             >
               {isGenerating ? (
                 <>
@@ -2137,25 +2141,25 @@ Payload Parameters:
         {/* Resizing column bar */}
         <div
           onMouseDown={() => setIsDraggingColumn(true)}
-          className={`w-1 hover:w-1.5 bg-white/5 hover:bg-brand-blue/35 cursor-col-resize self-stretch transition-all duration-150 flex-shrink-0 flex items-center justify-center relative ${
-            isDraggingColumn ? 'bg-brand-blue/40' : ''
+          className={`w-1 hover:w-1.5 bg-white/5 hover:bg-white/20 cursor-col-resize self-stretch transition-all duration-150 flex-shrink-0 flex items-center justify-center relative ${
+            isDraggingColumn ? 'bg-white/30' : ''
           }`}
         >
           <div className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize z-10" />
         </div>
 
         {/* Right Workspace telemetry & results */}
-        <div className="flex-grow flex-1 flex flex-col min-w-0 min-h-0 bg-slate-950/20">
+        <div className="flex-grow flex-1 flex flex-col min-w-0 min-h-0 bg-[#050505]/20">
           
           <div className="flex-grow flex flex-col min-h-0">
             
             {/* Telemetry Console */}
             <div
               id="console-wrapper"
-              className="flex-shrink-0 flex flex-col bg-[#02040a] border-b border-white/5 overflow-hidden"
+              className="flex-shrink-0 flex flex-col bg-[#050505] border-b border-white/5 overflow-hidden"
               style={{ height: `${consoleHeight}px` }}
             >
-              <div className="bg-[#05070f] px-5 py-2.5 border-b border-white/5 flex items-center justify-between">
+              <div className="bg-[#090909] px-5 py-2.5 border-b border-white/5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Terminal className="w-4 h-4 text-slate-400" />
                   <span className="font-mono text-[10px] text-slate-400 font-semibold tracking-tight">Sandbox Execution Console</span>
@@ -2167,10 +2171,10 @@ Payload Parameters:
                   </button>
                 </div>
                 <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 ${
-                  pulseState === 'Active' ? 'text-indigo-400 animate-pulse' : pulseState === 'Ready' ? 'text-emerald-400' : 'text-slate-500'
+                  pulseState === 'Active' ? 'text-white animate-pulse' : pulseState === 'Ready' ? 'text-emerald-400' : 'text-slate-500'
                 }`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${
-                    pulseState === 'Active' ? 'bg-indigo-400 animate-ping' : pulseState === 'Ready' ? 'bg-emerald-400' : 'bg-slate-500'
+                    pulseState === 'Active' ? 'bg-white animate-ping' : pulseState === 'Ready' ? 'bg-emerald-400' : 'bg-slate-500'
                   }`} />
                   {pulseState}
                 </span>
@@ -2179,8 +2183,8 @@ Payload Parameters:
               <div className="p-4 flex-grow overflow-y-auto font-mono text-[11px] flex flex-col gap-1 text-slate-300">
                 {logs.map((log, idx) => {
                   let typeColor = 'text-slate-400';
-                  if (log.type === 'scraper') typeColor = 'text-cyan-400';
-                  else if (log.type === 'agent') typeColor = 'text-indigo-300';
+                  if (log.type === 'scraper') typeColor = 'text-zinc-300';
+                  else if (log.type === 'agent') typeColor = 'text-zinc-300';
                   else if (log.type === 'sandbox') typeColor = 'text-amber-300';
                   else if (log.type === 'success') typeColor = 'text-emerald-400';
                   else if (log.type === 'error') typeColor = 'text-red-400';
@@ -2201,15 +2205,15 @@ Payload Parameters:
             {/* Vertical resizing bar */}
             <div
               onMouseDown={() => setIsDraggingConsole(true)}
-              className={`h-1 hover:h-1.5 bg-white/5 hover:bg-brand-blue/35 cursor-row-resize flex-shrink-0 flex items-center justify-center relative z-10 ${
-                isDraggingConsole ? 'bg-brand-blue/40' : ''
+              className={`h-1 hover:h-1.5 bg-white/5 hover:bg-white/20 cursor-row-resize flex-shrink-0 flex items-center justify-center relative z-10 ${
+                isDraggingConsole ? 'bg-white/30' : ''
               }`}
             >
               <div className="absolute inset-x-0 -top-1 -bottom-1 cursor-row-resize z-20" />
             </div>
 
             {/* Graph flow visualizer + result tabs */}
-            <div className="flex-1 flex flex-col min-h-0 bg-[#0c101a]/30 p-4 gap-4">
+            <div className="flex-1 flex flex-col min-h-0 bg-[#080808]/30 backdrop-blur-md p-4 gap-4">
               {renderFlowchartVisualizer()}
 
               {/* Output Tab contents */}
@@ -2219,9 +2223,9 @@ Payload Parameters:
                 }`}>
                   
                   {/* Actions bar header */}
-                  <div className="bg-[#0b0e14] px-5 py-3 border-b border-white/5 flex items-center justify-between flex-shrink-0">
+                  <div className="bg-[#090909] px-5 py-3 border-b border-white/5 flex items-center justify-between flex-shrink-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-indigo-300 bg-indigo-950/40 border border-indigo-900/30 px-2 py-0.5 rounded">
+                      <span className="text-xs font-bold text-white bg-white/10 border border-white/10 px-2 py-0.5 rounded">
                         {currentIntegration.language.toUpperCase()}
                       </span>
                       <h4 className="text-xs font-bold text-white truncate max-w-xs">{currentIntegration.title}</h4>
@@ -2246,15 +2250,15 @@ Payload Parameters:
                   </div>
 
                   {/* Tabs bar */}
-                  <div className="flex bg-slate-900/50 border-b border-white/5 p-2 gap-1 flex-shrink-0">
+                  <div className="flex bg-black/50 border-b border-white/5 p-2 gap-1 flex-shrink-0">
                     {(['overview', 'endpoints', 'code', 'tests', 'readme'] as const).map(tab => (
                       <button
                         key={tab}
                         onClick={() => setActiveResultTab(tab)}
                         className={`text-[10px] font-bold py-1.5 px-3 rounded-lg transition ${
                           activeResultTab === tab
-                            ? 'bg-brand-blue text-white'
-                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            ? 'bg-white text-black'
+                            : 'text-slate-400 hover:text-white hover:bg-white/10'
                         }`}
                       >
                         {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -2263,7 +2267,7 @@ Payload Parameters:
                   </div>
 
                   {/* Document panel viewport */}
-                  <div className="p-5 flex-grow overflow-y-auto bg-slate-900/10 text-slate-300">
+                  <div className="p-5 flex-grow overflow-y-auto bg-black/10 text-slate-300">
                     {activeResultTab === 'overview' && (
                       <div
                         className="markdown-body"
@@ -2295,7 +2299,7 @@ Payload Parameters:
                             Download
                           </button>
                         </div>
-                        <pre className="bg-slate-950 p-4 border border-white/5 rounded-lg font-mono text-xs overflow-x-auto select-all mt-8">
+                        <pre className="bg-[#090909] p-4 border border-white/5 rounded-lg font-mono text-xs overflow-x-auto select-all mt-8">
                           <code>{currentIntegration.code}</code>
                         </pre>
                       </div>
@@ -2319,7 +2323,7 @@ Payload Parameters:
                             Download
                           </button>
                         </div>
-                        <pre className="bg-slate-950 p-4 border border-white/5 rounded-lg font-mono text-xs overflow-x-auto select-all mt-8">
+                        <pre className="bg-[#090909] p-4 border border-white/5 rounded-lg font-mono text-xs overflow-x-auto select-all mt-8">
                           <code>{currentIntegration.tests}</code>
                         </pre>
                       </div>
@@ -2343,7 +2347,7 @@ Payload Parameters:
                             Download
                           </button>
                         </div>
-                        <pre className="bg-slate-950 p-4 border border-white/5 rounded-lg font-mono text-xs overflow-x-auto select-all mt-8">
+                        <pre className="bg-[#090909] p-4 border border-white/5 rounded-lg font-mono text-xs overflow-x-auto select-all mt-8">
                           <code>{currentIntegration.readme}</code>
                         </pre>
                       </div>
@@ -2373,7 +2377,7 @@ Payload Parameters:
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#0b0f19] border border-white/10 rounded-xl shadow-2xl max-w-sm w-full overflow-hidden"
+              className="bg-[#080808] border border-white/10 rounded-xl shadow-2xl max-w-sm w-full overflow-hidden"
             >
               <div className="p-6">
                 <div className="flex items-center gap-3">
@@ -2394,7 +2398,7 @@ Payload Parameters:
                 </button>
                 <button
                   onClick={() => confirmModal.resolve?.(true)}
-                  className="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition"
+                  className="text-xs font-bold text-black bg-white hover:bg-zinc-200 px-4 py-2 rounded-lg transition"
                 >
                   {confirmModal.btnText}
                 </button>
