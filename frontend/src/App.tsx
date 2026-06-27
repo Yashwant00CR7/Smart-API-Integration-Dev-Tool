@@ -151,6 +151,7 @@ export default function App() {
   const [consoleHeight, setConsoleHeight] = useState(250);
   const [isDraggingColumn, setIsDraggingColumn] = useState(false);
   const [isDraggingConsole, setIsDraggingConsole] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Health Status
   const [backendStatus, setBackendStatus] = useState({
@@ -278,6 +279,11 @@ export default function App() {
     const initialView = (params.get('workspace') === 'true' || params.get('view') === 'workspace') ? 'workspace' : 'landing';
     window.history.replaceState({ view: initialView }, '', window.location.search || '/');
 
+    // Listen to window size for mobile check
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
     // Load credentials
     setGeminiKey(sessionStorage.getItem('credentials_gemini_key') || '');
     setGroqKey(sessionStorage.getItem('credentials_groq_key') || '');
@@ -317,6 +323,7 @@ export default function App() {
     return () => {
       clearInterval(interval);
       window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('resize', checkMobile);
     };
   }, []);
 
@@ -928,14 +935,14 @@ export default function App() {
             </nav>
 
             {/* External Links & Console Switch */}
-            <div className="flex items-center gap-4 md:gap-5">
+            <div className="flex items-center gap-3 sm:gap-4 md:gap-5">
               <a
                 href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[11px] md:text-xs font-semibold text-zinc-400 hover:text-white transition flex items-center gap-1.5 font-mono"
               >
-                Cloud Host Space
+                <span className="hidden sm:inline">Cloud Host Space</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
               <button
@@ -949,25 +956,25 @@ export default function App() {
         </div>
 
         {/* Main Hero presentation */}
-        <main className="max-w-7xl mx-auto text-center py-20 px-6 relative z-10 flex flex-col items-center gap-8 my-auto">
+        <main className="max-w-7xl mx-auto text-center py-10 md:py-20 px-4 md:px-6 relative z-10 flex flex-col items-center gap-8 my-auto w-full">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-500/5 border border-white/10 text-xs font-semibold text-zinc-400 tracking-wide font-mono">
             <Shield className="w-3.5 h-3.5" />
             Academic Hackathon Submission
           </div>
 
-          <h1 className="font-heading text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.1]">
+          <h1 className="font-heading text-3xl sm:text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.1]">
             Autonomous API Wrapper Generation & <br className="hidden md:block"/>
             <span className="bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">Self-Healing Integration Sandbox</span>
           </h1>
 
-          <p className="text-slate-400 text-sm md:text-base max-w-2xl leading-relaxed">
+          <p className="text-slate-400 text-xs sm:text-sm md:text-base max-w-2xl leading-relaxed">
             Input API documentation URL or raw markdown text. Our stateful LangGraph agent automatically generates a wrapper class, readme instructions, and a full unit test suite, locally testing and correcting code errors in real-time subprocess compilers.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 mt-2 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 mt-2 justify-center w-full sm:w-auto px-4 sm:px-0">
             <button
               onClick={() => navigateTo('workspace')}
-              className="inline-flex items-center gap-2 font-bold text-sm bg-white hover:bg-zinc-200 text-black py-3 px-6 rounded-lg transition shadow-lg shadow-white/5 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 font-bold text-sm bg-white hover:bg-zinc-200 text-black py-3 px-6 rounded-lg transition shadow-lg shadow-white/5 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
             >
               Launch Workspace Console
               <ArrowRight className="w-4 h-4" />
@@ -976,7 +983,7 @@ export default function App() {
               href="https://huggingface.co/spaces/Yash030/Smart-Dev-API-Tool"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 font-bold text-sm bg-zinc-900 border border-white/10 text-slate-300 hover:bg-zinc-800 py-3 px-6 rounded-lg transition hover:scale-[1.01] active:scale-[0.99]"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 font-bold text-sm bg-zinc-900 border border-white/10 text-slate-300 hover:bg-zinc-800 py-3 px-6 rounded-lg transition hover:scale-[1.01] active:scale-[0.99]"
             >
               Open Cloud Site
               <ExternalLink className="w-4 h-4" />
@@ -1038,7 +1045,7 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-12 min-h-[380px] text-left">
               
               {/* Left Column: Visual Agent Pipeline Flowchart (5 cols) */}
-              <div className="md:col-span-5 border-r border-white/5 p-6 bg-[#080808]/20 flex flex-col justify-between">
+              <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-white/5 p-6 bg-[#080808]/20 flex flex-col justify-between">
                 <div>
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5 font-mono">
                     <Cpu className="w-3.5 h-3.5 text-white" />
@@ -1832,7 +1839,7 @@ Payload Parameters:
   // FULL-SCREEN WORKSPACE CONSOLE VIEW
   // -------------------------------------------------------------
   return (
-    <div className="h-screen w-screen bg-[#050505] text-slate-100 font-sans flex flex-col overflow-hidden relative">
+    <div className="h-auto md:h-screen min-h-screen md:min-h-0 w-screen bg-[#050505] text-slate-100 font-sans flex flex-col overflow-y-auto md:overflow-hidden relative">
       
       {/* Ambient background glows */}
       <div className="absolute top-0 inset-x-0 h-[600px] bg-gradient-to-b from-white/[0.02] via-transparent to-transparent pointer-events-none z-0" />
@@ -1857,7 +1864,7 @@ Payload Parameters:
               animate={{ translateX: 0 }}
               exit={{ translateX: '100%' }}
               transition={{ type: 'tween', duration: 0.25 }}
-              className="relative w-80 bg-[#090909] border-l border-white/10 h-full p-6 flex flex-col justify-between shadow-2xl z-10"
+              className="relative w-80 max-w-full bg-[#090909] border-l border-white/10 h-full p-6 flex flex-col justify-between shadow-2xl z-10"
             >
               <div className="space-y-6">
                 <div className="flex items-center justify-between border-b border-white/5 pb-3">
@@ -1970,8 +1977,8 @@ Payload Parameters:
             <Zap className="w-4 h-4 text-black" />
           </button>
           <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="text-slate-400 hover:text-white cursor-pointer transition" onClick={() => navigateTo('landing')}>smart-api-devtool</span>
-            <span className="text-white/20">/</span>
+            <span className="hidden sm:inline text-slate-400 hover:text-white cursor-pointer transition" onClick={() => navigateTo('landing')}>smart-api-devtool</span>
+            <span className="hidden sm:inline text-white/20">/</span>
             <span className="text-white font-semibold font-sans">workspace-console</span>
           </div>
         </div>
@@ -2015,66 +2022,74 @@ Payload Parameters:
       </nav>
 
       {/* DUAL COLS WORKSPACE PORT */}
-      <div className="flex-grow flex overflow-hidden relative z-10 min-h-0 w-full">
-                {/* Left Caching Sidebar */}
+      <div className="flex-grow flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative z-10 min-h-0 w-full">
+        {/* Left Caching Sidebar */}
         {sidebarOpen && (
-          <div className="w-64 bg-[#080808]/40 border-r border-white/10 flex flex-col p-4 flex-shrink-0 select-none backdrop-blur-md">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Saved integrations</span>
-              <span className="text-xs font-semibold px-2 py-0.5 bg-white/5 border border-white/10 rounded text-slate-350">
-                {integrations.length}
-              </span>
-            </div>
+          <>
+            {/* Mobile Sidebar Backdrop */}
+            <div 
+              onClick={() => setSidebarOpen(false)} 
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs z-25 md:hidden"
+            />
+            
+            <div className="fixed md:relative inset-y-0 left-0 z-30 w-64 bg-[#090909] md:bg-[#080808]/40 border-r border-white/10 flex flex-col p-4 flex-shrink-0 select-none backdrop-blur-md shadow-2xl md:shadow-none h-full md:h-auto">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Saved integrations</span>
+                <span className="text-xs font-semibold px-2 py-0.5 bg-white/5 border border-white/10 rounded text-slate-350">
+                  {integrations.length}
+                </span>
+              </div>
 
-            <div className="flex-grow overflow-y-auto mb-4 space-y-2 pr-1">
-              {integrations.length === 0 ? (
-                <div className="text-center text-xs text-slate-500 py-12 border border-dashed border-white/10 rounded-xl bg-white/[0.01]">
-                  No cached integrations
-                </div>
-              ) : (
-                integrations.map(item => (
-                  <div
-                    key={item.id}
-                    onClick={() => handleLoadHistoryRecord(item)}
-                    className={`group p-3 rounded-lg border text-left cursor-pointer transition duration-150 flex items-center justify-between gap-3 ${
-                      currentIntegration?.id === item.id
-                        ? 'bg-white/10 border-white/20 text-white shadow-sm'
-                        : 'bg-transparent border-white/5 hover:bg-white/5 text-slate-400'
-                    }`}
-                  >
-                    <div className="min-w-0 flex-grow">
-                      <div className="text-xs font-bold text-slate-200 truncate">{item.title}</div>
-                      <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500">
-                        <span className="px-1 py-0.2 bg-white/5 border border-white/10 rounded text-[8px] font-extrabold uppercase text-slate-300">
-                          {item.language}
-                        </span>
-                        <span>{new Date(item.timestamp).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => handleDeleteHistoryRecord(item.id, e)}
-                      className="p-1 text-slate-500 hover:text-red-400 rounded transition opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+              <div className="flex-grow overflow-y-auto mb-4 space-y-2 pr-1">
+                {integrations.length === 0 ? (
+                  <div className="text-center text-xs text-slate-500 py-12 border border-dashed border-white/10 rounded-xl bg-white/[0.01]">
+                    No cached integrations
                   </div>
-                ))
-              )}
-            </div>
+                ) : (
+                  integrations.map(item => (
+                    <div
+                      key={item.id}
+                      onClick={() => handleLoadHistoryRecord(item)}
+                      className={`group p-3 rounded-lg border text-left cursor-pointer transition duration-150 flex items-center justify-between gap-3 ${
+                        currentIntegration?.id === item.id
+                          ? 'bg-white/10 border-white/20 text-white shadow-sm'
+                          : 'bg-transparent border-white/5 hover:bg-white/5 text-slate-400'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-grow">
+                        <div className="text-xs font-bold text-slate-200 truncate">{item.title}</div>
+                        <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500">
+                          <span className="px-1 py-0.2 bg-white/5 border border-white/10 rounded text-[8px] font-extrabold uppercase text-slate-300">
+                            {item.language}
+                          </span>
+                          <span>{new Date(item.timestamp).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => handleDeleteHistoryRecord(item.id, e)}
+                        className="p-1 text-slate-500 hover:text-red-400 rounded transition opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
 
-            <button
-              onClick={handleClearAllHistory}
-              className="w-full text-center text-xs font-bold py-2 px-3 border border-white/10 text-slate-400 bg-white/5 hover:border-red-500/30 hover:text-red-400 rounded-lg transition cursor-pointer"
-            >
-              Clear Workspace Cache
-            </button>
-          </div>
+              <button
+                onClick={handleClearAllHistory}
+                className="w-full text-center text-xs font-bold py-2 px-3 border border-white/10 text-slate-400 bg-white/5 hover:border-red-500/30 hover:text-red-400 rounded-lg transition cursor-pointer"
+              >
+                Clear Workspace Cache
+              </button>
+            </div>
+          </>
         )}
 
         {/* Form Inputs Parameter panel */}
         <div
-          className="flex-shrink-0 flex flex-col p-4 overflow-y-auto bg-transparent"
-          style={{ width: `${leftWidth}px` }}
+          className="w-full md:w-auto flex-shrink-0 flex flex-col p-4 md:overflow-y-auto bg-transparent"
+          style={{ width: isMobile ? '100%' : `${leftWidth}px` }}
         >
           <div className="glass-panel rounded-2xl p-6 flex flex-col gap-4 overflow-y-auto h-full text-white shadow-2xl">
             <div className="border-b border-white/5 pb-4">
@@ -2281,7 +2296,7 @@ Payload Parameters:
         {/* Resizing column bar */}
         <div
           onMouseDown={() => setIsDraggingColumn(true)}
-          className={`w-1 hover:w-1.5 bg-white/5 hover:bg-white/20 cursor-col-resize self-stretch transition-all duration-150 flex-shrink-0 flex items-center justify-center relative ${
+          className={`hidden md:flex w-1 hover:w-1.5 bg-white/5 hover:bg-white/20 cursor-col-resize self-stretch transition-all duration-150 flex-shrink-0 items-center justify-center relative ${
             isDraggingColumn ? 'bg-white/30' : ''
           }`}
         >
@@ -2289,7 +2304,7 @@ Payload Parameters:
         </div>
 
         {/* Right Workspace telemetry & results */}
-        <div className="flex-grow flex-1 flex flex-col min-w-0 min-h-0 bg-transparent p-4 gap-4 overflow-y-auto">
+        <div className="flex-grow flex-1 flex flex-col min-w-0 min-h-0 bg-transparent p-4 gap-4 md:overflow-y-auto">
           
           <div className="flex-grow flex flex-col min-h-0">
             
@@ -2297,7 +2312,7 @@ Payload Parameters:
             <div
               id="console-wrapper"
               className="flex-shrink-0 flex flex-col bg-[#07090e] border border-white/10 shadow-lg rounded-xl overflow-hidden mb-4"
-              style={{ height: `${consoleHeight}px` }}
+              style={{ height: isMobile ? '280px' : `${consoleHeight}px` }}
             >
               <div className="bg-[#0f111a] px-4 py-2 border-b border-white/5 flex items-center justify-between relative flex-shrink-0">
                 {/* Dots */}
@@ -2349,13 +2364,13 @@ Payload Parameters:
             {/* Vertical resizing bar */}
             <div
               onMouseDown={() => setIsDraggingConsole(true)}
-              className="h-1 bg-white/5 hover:bg-white/10 cursor-row-resize flex-shrink-0 relative z-10"
+              className="hidden md:block h-1 bg-white/5 hover:bg-white/10 cursor-row-resize flex-shrink-0 relative z-10"
             >
               <div className="absolute inset-x-0 -top-1 -bottom-1 cursor-row-resize z-20" />
             </div>
 
             {/* Graph flow visualizer + result tabs */}
-            <div className="flex-grow flex flex-col min-h-0 glass-panel shadow-2xl rounded-xl p-4 gap-4 mt-2">
+            <div className="flex-grow flex flex-col min-h-[450px] md:min-h-0 glass-panel shadow-2xl rounded-xl p-4 gap-4 mt-2">
               {renderFlowchartVisualizer()}
 
               {/* Output Tab contents */}
@@ -2391,12 +2406,12 @@ Payload Parameters:
                   </div>
 
                   {/* Tabs bar */}
-                  <div className="flex bg-[#050505]/45 border-b border-white/5 p-2 gap-1 flex-shrink-0">
+                  <div className="flex bg-[#050505]/45 border-b border-white/5 p-2 gap-1 flex-shrink-0 overflow-x-auto whitespace-nowrap">
                     {(['overview', 'endpoints', 'code', 'tests', 'readme'] as const).map(tab => (
                       <button
                         key={tab}
                         onClick={() => setActiveResultTab(tab)}
-                        className={`text-[10px] font-bold py-1.5 px-3 rounded-lg transition cursor-pointer ${
+                        className={`text-[10px] font-bold py-1.5 px-3 rounded-lg transition cursor-pointer flex-shrink-0 ${
                           activeResultTab === tab
                             ? 'bg-white text-black font-extrabold shadow-md'
                             : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -2408,7 +2423,7 @@ Payload Parameters:
                   </div>
 
                   {/* Document panel viewport */}
-                  <div className="p-5 flex-grow overflow-y-auto bg-transparent text-slate-350">
+                  <div className="p-3 md:p-5 flex-grow overflow-y-auto bg-transparent text-slate-350">
                     {activeResultTab === 'overview' && (
                       <div
                         className="markdown-body"
