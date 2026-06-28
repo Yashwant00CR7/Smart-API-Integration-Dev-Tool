@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 1 — API Integration Challenges & Developer Bottlenecks</title>
+  <link rel="stylesheet" href="../assets/course.css" />
+</head>
+<body>
+  <div class="container">
+
+    <nav class="course-nav">
+      <a href="index.html">Course Index</a>
+      <span class="sep">›</span>
+      <span>Lesson 1</span>
+    </nav>
+
+    <header>
+      <div class="lesson-meta">Lesson 1 · Conception &amp; Architecture</div>
+      <h1>API Integration Challenges &amp; Developer Bottlenecks</h1>
+      <p class="lesson-intro">
+        Why do developers lose so much time on API integrations? This lesson maps the five core friction points and shows how each one shaped the design of this tool.
+      </p>
+    </header>
+
+    <main>
+      <p>
+        In modern web development, integrating third-party APIs — Stripe, Slack, Salesforce, internal services — is a daily task. Despite REST and JSON being well-established standards, developers routinely lose hours to integration friction. Building the <strong>Smart API DevTool</strong> starts here: understanding exactly where those hours go.
+      </p>
+
+      <h2>The 5 Core Developer Bottlenecks</h2>
+
+      <div class="card">
+        <h3>1. Doc Hunting &amp; Parser Fatigue</h3>
+        <p>Documentation sites are structured inconsistently. Search is slow. Versioning creates discrepancies between what is written and what the API actually expects.</p>
+        <div class="note"><strong>Pain:</strong> "Where is the endpoint for updating a checkout session — <code>/v1/checkout/sessions/:id</code> or <code>/v1/sessions/:id</code>?"</div>
+        <div class="impl"><strong>Our solution:</strong> Crawl the URL with Firecrawl, strip layout noise, and let the LLM output a clean, uniform endpoint list with parameters and payloads.</div>
+      </div>
+
+      <div class="card">
+        <h3>2. Boilerplate &amp; Auth Friction</h3>
+        <p>Setting up HTTP clients, attaching auth headers, managing token lifetimes — all of this happens before the first real API call.</p>
+        <div class="note"><strong>Pain:</strong> "I spent an hour writing Axios boilerplate and header config before making a single meaningful request."</div>
+        <div class="impl"><strong>Our solution:</strong> Auto-generate a fully configured client class with modular auth handlers already wired up.</div>
+      </div>
+
+      <div class="card">
+        <h3>3. Type Safety &amp; Schema Drift</h3>
+        <p>Without type definitions, developers integrate blindly. Manual TypeScript interfaces or Python dataclasses drift immediately when the API updates.</p>
+        <div class="note"><strong>Pain:</strong> "Production crashed because they changed an integer field to a string and my manual types were six weeks out of date."</div>
+        <div class="impl"><strong>Our solution:</strong> Extract payload structures directly from documentation schemas and output typed wrapper classes that match the API's actual shapes.</div>
+      </div>
+
+      <div class="card">
+        <h3>4. Error Handling &amp; Silent Failures</h3>
+        <p>Most hand-written wrappers are simple <code>fetch().then()</code> chains that have no strategy for rate limits (429), server errors (5xx), or timeouts.</p>
+        <div class="note"><strong>Pain:</strong> "A traffic spike triggered rate limits and the wrapper crashed the whole Node process instead of retrying."</div>
+        <div class="impl"><strong>Our solution:</strong> Generated wrappers include retry loops with exponential backoff and clean error parsers — by default, every time.</div>
+      </div>
+
+      <div class="card">
+        <h3>5. Integration Path Decision Paralysis</h3>
+        <p>Pull in the official 5 MB SDK for two API calls, or write a slim custom wrapper? The tradeoff is rarely obvious.</p>
+        <div class="note"><strong>Pain:</strong> "Do I really need the full Stripe SDK just to fetch one customer record?"</div>
+        <div class="impl"><strong>Our solution:</strong> The tool analyses the endpoints needed for the stated use case and outputs an integration path recommendation — SDK or slim REST wrapper.</div>
+      </div>
+
+      <h2>The Unified Pipeline</h2>
+      <p>Instead of switching between browser tabs and hand-writing interfaces, this tool creates a single automated flow:</p>
+      <pre>
+[API Doc URL] + [Use Case Description]
+        │
+        ▼
+┌───────────────┐
+│  Firecrawl    │ ──► Extracts clean markdown from the docs page
+└───────────────┘
+        │
+        ▼
+┌───────────────┐
+│  LLM Engine   │ ──► Standardises endpoints, auth modes, payload schemas
+└───────────────┘
+        │
+        ▼
+┌───────────────┐
+│ Code Generator│ ──► Outputs type-safe wrapper class + unit tests + README
+└───────────────┘</pre>
+
+      <div class="primary-source">
+        <div class="ps-label">📖 Primary Source — read this</div>
+        <a href="https://stripe.com/docs/api" target="_blank" rel="noopener">Stripe API Reference</a> — the gold standard for well-structured REST documentation. Browse it alongside this lesson to see how real endpoint hierarchies, auth flows, and error codes are documented in practice.
+      </div>
+
+      <section class="quiz">
+        <p class="quiz-heading">🧠 Retrieval Practice</p>
+        <p class="quiz-question">Why do custom, hand-coded REST wrappers frequently cause silent failures in production environments?</p>
+        <div class="quiz-options">
+          <button class="opt" onclick="checkAnswer(this, false, 'q1')">
+            A) They are slow to write and bloat bundle sizes compared to official SDKs.
+          </button>
+          <button class="opt" data-correct="true" onclick="checkAnswer(this, true, 'q1')">
+            B) They usually lack retry logic, rate-limit handling, and backoff strategies, so they crash or drop requests during traffic spikes.
+          </button>
+          <button class="opt" onclick="checkAnswer(this, false, 'q1')">
+            C) They cannot parse standard snake_case JSON fields from API responses.
+          </button>
+        </div>
+        <div class="quiz-explanation" id="q1-exp">
+          Manual integrations are typically written as "happy-path" calls. In production, transient failures, 429s, and 503s crash these calls unless explicit retry logic is present. This tool generates that resilience automatically.
+        </div>
+      </section>
+
+      <div class="ask-teacher">
+        <strong>Got a question?</strong> Ask your teacher agent anything that is unclear from this lesson — about specific bottlenecks, about the pipeline design, or about how a particular API pattern maps to the tool's behaviour.
+      </div>
+    </main>
+
+    <nav class="lesson-nav">
+      <span class="spacer"></span>
+      <a href="0002-fastapi-and-subprocess-executors.html">Lesson 2 — FastAPI &amp; Subprocess Runtimes →</a>
+    </nav>
+
+    <footer>Smart API DevTool · Interactive Learning Curriculum · <a href="index.html">All Lessons</a></footer>
+  </div>
+  <script src="../assets/quiz.js"></script>
+</body>
+</html>

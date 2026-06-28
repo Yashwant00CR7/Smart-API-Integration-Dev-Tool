@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 6 — Containerised Multi-Runtime Sandboxing &amp; HF Spaces Deployment</title>
+  <link rel="stylesheet" href="../assets/course.css" />
+</head>
+<body>
+  <div class="container">
+
+    <nav class="course-nav">
+      <a href="index.html">Course Index</a>
+      <span class="sep">›</span>
+      <a href="0005-premium-web-ui.html">Lesson 5</a>
+      <span class="sep">›</span>
+      <span>Lesson 6</span>
+    </nav>
+
+    <header>
+      <div class="lesson-meta">Lesson 6 · Docker, Runtimes &amp; Cloud Security</div>
+      <h1>Containerised Multi-Runtime Sandboxing &amp; HF Spaces Deployment</h1>
+      <p class="lesson-intro">
+        Bundling five language runtimes into one Docker image, then deploying it on a cloud platform that runs as a non-root user. Three specific problems — and their solutions.
+      </p>
+    </header>
+
+    <main>
+      <h2>1. Multi-Runtime Containerisation</h2>
+      <p>
+        To compile Python, JavaScript, TypeScript, Go, and Java tests in a single application, all five runtimes must be present in the execution environment. On a developer's local machine this is manageable. On a cloud host it must be explicitly bundled.
+      </p>
+      <pre><code># Install all language runtimes in one Debian layer
+RUN apt-get update && apt-get install -y \
+    curl build-essential golang default-jdk \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*</code></pre>
+
+      <div class="card">
+        <h3>Why a single-stage image?</h3>
+        <p>All five compilers in one layer means the Python subprocess executor can call <code>go test</code>, <code>javac</code>, <code>node</code>, and <code>pytest</code> directly without any network downloads at runtime.</p>
+        <div class="impl"><strong>Result:</strong> Test executions are instant, fully offline, and deterministic — no npm downloads, no compiler resolution at generation time.</div>
+      </div>
+
+      <h2>2. Hugging Face Spaces — Port &amp; User Constraints</h2>
+      <p>
+        Hugging Face Spaces enforces two hard constraints on Docker containers:
+      </p>
+      <ul>
+        <li><strong>Port 7860 only.</strong> All external traffic is routed exclusively to this port. Uvicorn must bind to <code>0.0.0.0:7860</code>.</li>
+        <li><strong>UID 1000 non-root execution.</strong> Spaces override the container user and run the process as a restricted non-root user with UID 1000.</li>
+      </ul>
+      <p>
+        If the application creates files in directories owned by <code>root</code> — which our UUID sandbox executor does — the runtime raises <code>PermissionError</code> immediately.
+      </p>
+      <pre><code># Create a non-root user matching the UID Spaces enforces
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH
+WORKDIR $HOME/app
+
+# Copy all files with ownership assigned to user (not root)
+COPY --chown=user . $HOME/app</code></pre>
+
+      <div class="card">
+        <h3>Why --chown=user matters</h3>
+        <p>Without this flag, files are copied as root. When Spaces runs the container as UID 1000, the process cannot write to those root-owned paths — including the <code>temp/</code> directory where sandbox test files are created.</p>
+        <div class="impl"><strong>Result:</strong> All copied files and runtime-created directories are owned by UID 1000, giving the non-root process full write access.</div>
+      </div>
+
+      <h2>3. Pre-Baking TypeScript — Global npm Install</h2>
+      <p>
+        <code>npx ts-node</code> normally fetches packages dynamically from the npm registry on first use. Inside a cloud container this introduces latency spikes, network timeouts, and npm rate limits on every test run.
+      </p>
+      <pre><code># Pre-install globally as root, before switching to user
+RUN npm install -g typescript ts-node</code></pre>
+
+      <div class="card">
+        <h3>Why install as root before the USER switch?</h3>
+        <p>Global npm installs require write access to <code>/usr/lib/node_modules</code>. This must happen before the <code>USER user</code> instruction drops privileges. After the switch, the globally installed binaries are still accessible as read-execute to UID 1000.</p>
+        <div class="note"><strong>Timing matters:</strong> Reversing the order — switching to user first, then running npm install -g — raises a permission error during the Docker build.</div>
+        <div class="impl"><strong>Result:</strong> TypeScript tests execute offline with zero npm download latency, every time.</div>
+      </div>
+
+      <div class="primary-source">
+        <div class="ps-label">📖 Primary Source — read this</div>
+        <a href="https://huggingface.co/docs/hub/spaces-sdks-docker" target="_blank" rel="noopener">Hugging Face — Docker Spaces documentation</a> — covers the port routing rules, non-root execution requirements, the <code>--chown</code> pattern, and the environment variables injected by the platform. Read this before deploying any Docker Space.
+      </div>
+
+      <section class="quiz">
+        <p class="quiz-heading">🧠 Retrieval Practice</p>
+
+        <p class="quiz-question" style="margin-top: 1rem;">Question 1 — Why will an application that creates files in root-owned directories fail on Hugging Face Spaces?</p>
+        <div class="quiz-options">
+          <button class="opt" onclick="checkAnswer(this, false, 'q6a')">
+            A) Hugging Face only supports Apache and nginx as web servers.
+          </button>
+          <button class="opt" data-correct="true" onclick="checkAnswer(this, true, 'q6a')">
+            B) Spaces force the container to run as UID 1000. A non-root process cannot write to directories owned by root, so any file creation raises a PermissionError.
+          </button>
+          <button class="opt" onclick="checkAnswer(this, false, 'q6a')">
+            C) Root processes are blocked from accessing GPU memory segments in shared cloud environments.
+          </button>
+        </div>
+        <div class="quiz-explanation" id="q6a-exp">
+          Hugging Face Spaces strictly enforce UID 1000 for security isolation. If container directories are owned by root, the non-root process cannot read or write to them at runtime — causing application failure even though the build succeeded.
+        </div>
+
+        <p class="quiz-question" style="margin-top: 2rem;">Question 2 — What is the main benefit of running <code>npm install -g typescript ts-node</code> in the Dockerfile before the USER switch?</p>
+        <div class="quiz-options">
+          <button class="opt" onclick="checkAnswer(this, false, 'q6b')">
+            A) It compiles the packages into native binaries that run without Node.js at all.
+          </button>
+          <button class="opt" data-correct="true" onclick="checkAnswer(this, true, 'q6b')">
+            B) It pre-installs and globally caches the TypeScript compilers before the user switch, preventing dynamic npm downloads during test execution at runtime.
+          </button>
+          <button class="opt" onclick="checkAnswer(this, false, 'q6b')">
+            C) It automatically encrypts TypeScript source files inside the container sandbox.
+          </button>
+        </div>
+        <div class="quiz-explanation" id="q6b-exp">
+          Pre-baking global dependencies eliminates compilation latency, removes network calls at test time, and ensures the container is fully self-contained and reproducible.
+        </div>
+      </section>
+
+      <div class="ask-teacher">
+        <strong>Got a question?</strong> Ask your teacher agent — about Docker layer caching, why the USER instruction ordering matters, or how Spaces secret management works for API keys.
+      </div>
+    </main>
+
+    <nav class="lesson-nav">
+      <a href="0005-premium-web-ui.html">← Lesson 5 — Web UI</a>
+      <a href="0007-instance-state-retries-and-mock-exhaustion.html">Lesson 7 — Instance-State Retries →</a>
+    </nav>
+
+    <footer>Smart API DevTool · Interactive Learning Curriculum · <a href="index.html">All Lessons</a></footer>
+  </div>
+  <script src="../assets/quiz.js"></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 3 — LangGraph Orchestration &amp; Self-Healing Loops</title>
+  <link rel="stylesheet" href="../assets/course.css" />
+</head>
+<body>
+  <div class="container">
+
+    <nav class="course-nav">
+      <a href="index.html">Course Index</a>
+      <span class="sep">›</span>
+      <a href="0002-fastapi-and-subprocess-executors.html">Lesson 2</a>
+      <span class="sep">›</span>
+      <span>Lesson 3</span>
+    </nav>
+
+    <header>
+      <div class="lesson-meta">Lesson 3 · Agentic Workflows &amp; State Machines</div>
+      <h1>LangGraph Orchestration &amp; Self-Healing Loops</h1>
+      <p class="lesson-intro">
+        LangGraph turns a one-shot code generator into a self-correcting loop. This lesson explains the state machine, the Predict → Act → Verify cycle, and the multi-language runtime challenges that had to be solved.
+      </p>
+    </header>
+
+    <main>
+      <p>
+        In standard software development, code generation is a one-off attempt — the LLM outputs code and if it fails to run, the user fixes it manually. In agentic engineering we build a <strong>state-transition engine</strong> that automates verification and healing. LangGraph is the framework that makes that possible.
+      </p>
+
+      <h2>Understanding LangGraph State Machines</h2>
+      <p>
+        LangGraph lets us define agent workflows as a cyclic directed graph. The graph shares a persistent <strong>state dictionary</strong> (<code>AgentState</code>). Each node is a function that reads the state, does work, and returns updated fields.
+      </p>
+
+      <div class="card">
+        <h3>The Shared State — AgentState</h3>
+        <p>Every piece of execution context lives in one typed dictionary, passed between all nodes without any implicit global state.</p>
+        <div class="impl">
+          <strong>Key fields:</strong>
+          <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+            <li><code>scraped_text</code> — the raw documentation context</li>
+            <li><code>use_case</code> — the developer's stated goal</li>
+            <li><code>language</code> — target language (Python, Go, Java…)</li>
+            <li><code>code</code> &amp; <code>tests</code> — the current generated iteration</li>
+            <li><code>error_logs</code> — compiler stdout/stderr from the last run</li>
+            <li><code>retry_count</code> — controls the loop termination boundary</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>The Golden Loop: Predict → Act → Verify</h2>
+
+      <div class="card">
+        <h3>Generator Node — Predict</h3>
+        <p>Queries Gemini, Groq, OpenRouter, or a local Ollama instance depending on the selected provider.</p>
+        <div class="note"><strong>The hard part:</strong> Prompting for structured JSON is fragile. If the model returns unstructured prose, the JSON parser breaks the whole pipeline.</div>
+        <div class="impl"><strong>Hardening:</strong> For Gemini, the official SDK's <code>response_schema</code> with Pydantic forces native JSON output. For Ollama, <code>format="json"</code> is set and a defensive multi-step extractor parses JSON using regex and curly-brace indexing as fallbacks.</div>
+      </div>
+
+      <div class="card">
+        <h3>Executor Node — Act &amp; Verify</h3>
+        <p>Writes files to the UUID sandbox, runs the compiler, and returns a pass/fail signal with full logs. See <a href="0002-fastapi-and-subprocess-executors.html">Lesson 2</a> for the full executor detail.</p>
+        <div class="impl"><strong>Conditional edge:</strong> If tests pass or <code>retry_count ≥ 3</code>, the graph transitions to <code>END</code>. Otherwise it loops back to the generator, injecting the error logs into the repair prompt.</div>
+      </div>
+
+      <h2>Multi-Language Runtime Challenges</h2>
+      <p>Supporting five runtimes in one engine surfaces environment-specific problems:</p>
+      <ul>
+        <li><strong>Windows npx resolution:</strong> <code>npx</code> is a CMD script, not a binary. Running it directly raises <code>WinError 2</code>. Fixed by prepending <code>["cmd.exe", "/c"]</code> dynamically on Windows.</li>
+        <li><strong>TypeScript type-check errors:</strong> TypeScript fails compilation in a clean sandbox with no <code>@types/node</code>. Fixed by passing <code>--transpile-only</code> to <code>ts-node</code>, which validates runtime syntax without full type resolution.</li>
+        <li><strong>Antivirus scan overhead:</strong> Compiling Go or Java triggers Windows Defender scans that can consume 20+ seconds. Fixed with a 30-second timeout for compiled languages vs. 15 seconds for interpreted ones.</li>
+      </ul>
+
+      <div class="primary-source">
+        <div class="ps-label">📖 Primary Source — read this</div>
+        <a href="https://langchain-ai.github.io/langgraph/concepts/low_level/" target="_blank" rel="noopener">LangGraph — Low-Level Concepts</a> — the official guide to StateGraph, nodes, edges, and conditional routing. Read the "Cycles" section specifically to understand how our retry loop is wired.
+      </div>
+
+      <section class="quiz">
+        <p class="quiz-heading">🧠 Retrieval Practice</p>
+        <p class="quiz-question">How does the LangGraph generator node use compiler error logs to self-heal code in subsequent iterations?</p>
+        <div class="quiz-options">
+          <button class="opt" onclick="checkAnswer(this, false, 'q3')">
+            A) It resets the state and asks the model to regenerate code from scratch with a higher temperature setting.
+          </button>
+          <button class="opt" data-correct="true" onclick="checkAnswer(this, true, 'q3')">
+            B) It injects the previously failed code, the test script, and the full stdout/stderr logs into the repair prompt, asking the model to fix the specific diagnostic issues.
+          </button>
+          <button class="opt" onclick="checkAnswer(this, false, 'q3')">
+            C) It parses the errors and patches the code directly using a Python AST transformer.
+          </button>
+        </div>
+        <div class="quiz-explanation" id="q3-exp">
+          Rather than discarding the failed attempt, the healing loop builds on it. Providing the exact failing code alongside its compiler errors lets the LLM act as a targeted editor rather than a blind generator — which produces far higher accuracy repairs.
+        </div>
+      </section>
+
+      <div class="ask-teacher">
+        <strong>Got a question?</strong> Ask your teacher agent — about how conditional edges work in LangGraph, how the retry ceiling is enforced, or why structured JSON output matters for agentic pipelines.
+      </div>
+    </main>
+
+    <nav class="lesson-nav">
+      <a href="0002-fastapi-and-subprocess-executors.html">← Lesson 2 — FastAPI &amp; Subprocess</a>
+      <a href="0004-model-context-protocol.html">Lesson 4 — Model Context Protocol →</a>
+    </nav>
+
+    <footer>Smart API DevTool · Interactive Learning Curriculum · <a href="index.html">All Lessons</a></footer>
+  </div>
+  <script src="../assets/quiz.js"></script>
+</body>
+</html>

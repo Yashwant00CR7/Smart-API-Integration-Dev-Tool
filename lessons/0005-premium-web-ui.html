@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 5 — Static Assets, Client-Side Caching &amp; ZIP Export</title>
+  <link rel="stylesheet" href="../assets/course.css" />
+</head>
+<body>
+  <div class="container">
+
+    <nav class="course-nav">
+      <a href="index.html">Course Index</a>
+      <span class="sep">›</span>
+      <a href="0004-model-context-protocol.html">Lesson 4</a>
+      <span class="sep">›</span>
+      <span>Lesson 5</span>
+    </nav>
+
+    <header>
+      <div class="lesson-meta">Lesson 5 · Frontend &amp; Asset Packaging</div>
+      <h1>Serving Static Assets, Client-Side Caching &amp; ZIP Export</h1>
+      <p class="lesson-intro">
+        Three architecture decisions that keep the tool lightweight: serving the entire frontend from FastAPI, storing history in the browser instead of a database, and packaging downloads entirely in-browser with no server involvement.
+      </p>
+    </header>
+
+    <main>
+      <p>
+        For a single-user developer tool or hackathon deployment, complex infrastructure is overkill. This lesson covers three patterns that keep the application stateless, fast, and zero-dependency on external databases or file storage.
+      </p>
+
+      <h2>1. Programmatic Static Asset Serving</h2>
+      <p>
+        FastAPI's <code>StaticFiles</code> middleware serves the entire React dashboard directly from the <code>public/</code> directory on the root path. No separate Node server or reverse proxy is needed in production.
+      </p>
+      <pre><code>public_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "public")
+)
+
+if os.path.isdir(public_path):
+    # html=True auto-serves index.html at "/" and subdirectory paths
+    app.mount("/", StaticFiles(directory=public_path, html=True), name="public")
+else:
+    @app.get("/")
+    def read_root():
+        return {"status": "Backend running. Static assets not yet built."}</code></pre>
+
+      <div class="card">
+        <h3>Why the conditional check?</h3>
+        <p>In development, the <code>public/</code> directory may not exist yet (frontend not built). Without the guard, FastAPI raises an error at startup instead of gracefully falling back to a JSON health route.</p>
+        <div class="impl"><strong>Result:</strong> A single <code>python main.py</code> command serves both the API and the full UI — one process, one port, one Dockerfile.</div>
+      </div>
+
+      <h2>2. Stateless Backend via Browser localStorage</h2>
+      <p>
+        Rather than storing integration history or API keys in SQLite or PostgreSQL, all persistent state lives in the developer's own browser. The backend is completely stateless.
+      </p>
+      <pre><code>// Save an integration record
+const record = { id: "integration_1720000000000", title: "stripe.com", code: "..." };
+localStorage.setItem("api_integrations_history", JSON.stringify([record]));
+
+// Retrieve on page load
+const history = JSON.parse(localStorage.getItem("api_integrations_history") || "[]");
+
+// API keys — session-scoped (clears when tab closes)
+sessionStorage.setItem("credentials_gemini_key", "AIzaSy...");</code></pre>
+
+      <div class="card">
+        <h3>Why not a database?</h3>
+        <div class="note"><strong>Security:</strong> API keys never leave the developer's machine. No server-side credential storage means no server-side credential breach surface.</div>
+        <div class="impl"><strong>Architecture benefit:</strong> The backend has no state to synchronise, backup, or migrate. Resetting the tool is as simple as clearing browser storage.</div>
+      </div>
+
+      <h2>3. Client-Side ZIP Export with JSZip</h2>
+      <p>
+        Normally, packaging files into a <code>.zip</code> requires the server to compress them and stream the binary back. JSZip does the entire operation in the browser, eliminating server-side CPU, memory, and storage overhead entirely.
+      </p>
+      <pre><code>import JSZip from "jszip";
+
+const zip = new JSZip();
+zip.file("client.py",       generatedClientCode);
+zip.file("test_client.py",  generatedTestsCode);
+zip.file("README.md",       generatedReadme);
+
+const blob = await zip.generateAsync({ type: "blob" });
+
+const a = document.createElement("a");
+a.href = URL.createObjectURL(blob);
+a.download = "api-integration-python.zip";
+a.click();
+URL.revokeObjectURL(a.href);</code></pre>
+
+      <div class="card">
+        <h3>Client-Side Packaging</h3>
+        <p>JSZip assembles the zip byte representation in a Web Worker, then creates an object URL for instant download.</p>
+        <div class="impl"><strong>Result:</strong> Instant downloads, no server storage cost, no server CPU overhead, and perfect alignment with the stateless backend architecture.</div>
+      </div>
+
+      <div class="primary-source">
+        <div class="ps-label">📖 Primary Source — read this</div>
+        <a href="https://fastapi.tiangolo.com/tutorial/static-files/" target="_blank" rel="noopener">FastAPI — Static Files documentation</a> — covers the <code>StaticFiles</code> mount, the <code>html=True</code> flag, and the ordering rules that determine which routes take priority when both static mounts and API routes are registered.
+      </div>
+
+      <section class="quiz">
+        <p class="quiz-heading">🧠 Retrieval Practice</p>
+
+        <p class="quiz-question" style="margin-top: 1rem;">Question 1 — Why is browser localStorage preferred over a server database for storing developer API keys in this tool?</p>
+        <div class="quiz-options">
+          <button class="opt" onclick="checkAnswer(this, false, 'q5a')">
+            A) It encrypts keys automatically using military-grade browser database protection.
+          </button>
+          <button class="opt" data-correct="true" onclick="checkAnswer(this, true, 'q5a')">
+            B) It keeps the backend stateless and keeps sensitive API credentials stored on the developer's own machine, never transmitted to or stored on the server.
+          </button>
+          <button class="opt" onclick="checkAnswer(this, false, 'q5a')">
+            C) It allows other devices on the local network to scan and share credentials automatically.
+          </button>
+        </div>
+        <div class="quiz-explanation" id="q5a-exp">
+          Keeping keys in the browser means no server-side credential storage — and therefore no server-side credential breach surface. The backend stays stateless and the developer retains full control of their keys.
+        </div>
+
+        <p class="quiz-question" style="margin-top: 2rem;">Question 2 — What does setting <code>html=True</code> on FastAPI's StaticFiles mount accomplish?</p>
+        <div class="quiz-options">
+          <button class="opt" onclick="checkAnswer(this, false, 'q5b')">
+            A) It automatically compiles JavaScript into HTML template models.
+          </button>
+          <button class="opt" onclick="checkAnswer(this, false, 'q5b2')">
+            B) It disables CORS handling for all HTML requests.
+          </button>
+          <button class="opt" data-correct="true" onclick="checkAnswer(this, true, 'q5b3')">
+            C) It automatically serves index.html when a user requests the root or any directory path, enabling SPA-style routing.
+          </button>
+        </div>
+        <div class="quiz-explanation" id="q5b3-exp">
+          <code>html=True</code> makes StaticFiles search for and serve <code>index.html</code> as the directory index default — which is exactly how single-page applications expect to be served.
+        </div>
+      </section>
+
+      <div class="ask-teacher">
+        <strong>Got a question?</strong> Ask your teacher agent — about StaticFiles mount ordering, sessionStorage vs localStorage tradeoffs, or how JSZip handles binary content vs text files.
+      </div>
+    </main>
+
+    <nav class="lesson-nav">
+      <a href="0004-model-context-protocol.html">← Lesson 4 — MCP</a>
+      <a href="0006-hugging-face-spaces-deployment.html">Lesson 6 — HF Spaces Deployment →</a>
+    </nav>
+
+    <footer>Smart API DevTool · Interactive Learning Curriculum · <a href="index.html">All Lessons</a></footer>
+  </div>
+  <script src="../assets/quiz.js"></script>
+</body>
+</html>

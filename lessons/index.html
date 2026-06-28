@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart API DevTool — Course Index</title>
+  <link rel="stylesheet" href="../assets/course.css" />
+  <style>
+    .lesson-list { list-style: none; padding: 0; margin: 0; }
+    .lesson-list li {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      margin-bottom: 0.85rem;
+      box-shadow: var(--shadow);
+      transition: box-shadow 0.15s;
+    }
+    .lesson-list li:hover { box-shadow: 0 6px 16px rgba(0,0,0,.08); }
+    .lesson-list a {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      text-decoration: none;
+      color: var(--text);
+      font-family: var(--sans);
+    }
+    .lesson-num {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      min-width: 4.5rem;
+      flex-shrink: 0;
+    }
+    .lesson-title { font-weight: 600; font-size: 1rem; color: #1e293b; }
+    .lesson-tag {
+      margin-left: auto;
+      font-size: 0.75rem;
+      background: var(--accent-light);
+      color: var(--accent-dark);
+      border-radius: 20px;
+      padding: 0.2rem 0.7rem;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="lesson-meta">Smart API DevTool — Learning Curriculum</div>
+      <h1>Course Index</h1>
+      <p class="lesson-intro">
+        Seven lessons that trace the full arc of this project — from understanding why API integration is painful, to building an autonomous self-healing agent that fixes its own code.
+      </p>
+    </header>
+
+    <main>
+      <ul class="lesson-list">
+        <li>
+          <a href="0001-problems-and-bottlenecks.html">
+            <span class="lesson-num">Lesson 01</span>
+            <span class="lesson-title">API Integration Challenges & Developer Bottlenecks</span>
+            <span class="lesson-tag">Conception</span>
+          </a>
+        </li>
+        <li>
+          <a href="0002-fastapi-and-subprocess-executors.html">
+            <span class="lesson-num">Lesson 02</span>
+            <span class="lesson-title">FastAPI Skeletons & Subprocess Test Runtimes</span>
+            <span class="lesson-tag">Backend</span>
+          </a>
+        </li>
+        <li>
+          <a href="0003-langgraph-and-self-healing-agent.html">
+            <span class="lesson-num">Lesson 03</span>
+            <span class="lesson-title">LangGraph Orchestration & Self-Healing Loops</span>
+            <span class="lesson-tag">Agentic</span>
+          </a>
+        </li>
+        <li>
+          <a href="0004-model-context-protocol.html">
+            <span class="lesson-num">Lesson 04</span>
+            <span class="lesson-title">Model Context Protocol & Local IDE Integration</span>
+            <span class="lesson-tag">Protocols</span>
+          </a>
+        </li>
+        <li>
+          <a href="0005-premium-web-ui.html">
+            <span class="lesson-num">Lesson 05</span>
+            <span class="lesson-title">Serving Static Assets, Client-Side Caching & ZIP Export</span>
+            <span class="lesson-tag">Frontend</span>
+          </a>
+        </li>
+        <li>
+          <a href="0006-hugging-face-spaces-deployment.html">
+            <span class="lesson-num">Lesson 06</span>
+            <span class="lesson-title">Containerised Multi-Runtime Sandboxing & HF Spaces Deployment</span>
+            <span class="lesson-tag">DevOps</span>
+          </a>
+        </li>
+        <li>
+          <a href="0007-instance-state-retries-and-mock-exhaustion.html">
+            <span class="lesson-num">Lesson 07</span>
+            <span class="lesson-title">Instance-State Retries & Mock-Exhaustion StopIteration Bugs</span>
+            <span class="lesson-tag">Resilience</span>
+          </a>
+        </li>
+      </ul>
+    </main>
+
+    <footer>Smart API DevTool · Interactive Learning Curriculum</footer>
+  </div>
+</body>
+</html>

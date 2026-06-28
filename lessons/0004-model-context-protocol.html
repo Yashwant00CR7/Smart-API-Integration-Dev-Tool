@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 4 — Model Context Protocol &amp; Local IDE Integration</title>
+  <link rel="stylesheet" href="../assets/course.css" />
+</head>
+<body>
+  <div class="container">
+
+    <nav class="course-nav">
+      <a href="index.html">Course Index</a>
+      <span class="sep">›</span>
+      <a href="0003-langgraph-and-self-healing-agent.html">Lesson 3</a>
+      <span class="sep">›</span>
+      <span>Lesson 4</span>
+    </nav>
+
+    <header>
+      <div class="lesson-meta">Lesson 4 · IDE Tool Integration &amp; Protocols</div>
+      <h1>Model Context Protocol &amp; Local IDE Integration</h1>
+      <p class="lesson-intro">
+        MCP lets IDE agents call this tool directly as a local subprocess. This lesson covers the stdin/stdout transport, the critical stdout corruption problem, and the JSON-RPC handshake lifecycle.
+      </p>
+    </header>
+
+    <main>
+      <p>
+        AI assistants like Claude Desktop and Cursor run directly inside developers' editors and can interact with local environments through the <strong>Model Context Protocol (MCP)</strong> — an open standard by Anthropic. Rather than always using the web dashboard, the tool can be launched as an MCP server and called natively from within the IDE.
+      </p>
+
+      <h2>Standard I/O Stream Transport</h2>
+      <p>
+        The primary local MCP transport is <strong>stdin/stdout</strong>. The IDE client launches the server as a subprocess, writes JSON-RPC 2.0 request frames to its <code>stdin</code>, and reads JSON-RPC 2.0 response frames from its <code>stdout</code>.
+      </p>
+
+      <div class="card">
+        <h3>The Stream Corruption Problem</h3>
+        <p>Because <code>stdout</code> carries the protocol frames, <strong>any casual print statement, warning, or library log going to stdout will corrupt the stream</strong>. The IDE client will fail to parse it as JSON-RPC and immediately drop the connection.</p>
+        <div class="note"><strong>Real risk:</strong> A connection warning from <code>google-genai</code>, or a single <code>print("Generating...")</code>, silently crashes the MCP session.</div>
+        <div class="impl">
+          <strong>Solution:</strong> On startup, we save a reference to the original <code>sys.stdout</code> and then swap <code>sys.stdout</code> to point to <code>sys.stderr</code>. All prints and library logs go safely to stderr (visible as IDE logs). JSON-RPC responses are written exclusively via the saved original stdout reference.
+        </div>
+      </div>
+
+      <h2>Protocol Handshake Lifecycle</h2>
+
+      <div class="card">
+        <h3>Step 1 — Handshake</h3>
+        <p>The session opens with a two-message negotiation.</p>
+        <div class="impl">
+          <strong>initialize</strong> — client sends its protocol version. Server replies with its name, version, and supported protocol version.<br/><br/>
+          <strong>initialized</strong> — client sends a notification acknowledging the handshake. No server response is expected (notifications do not get responses per JSON-RPC 2.0).
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Step 2 — Tool Discovery (<code>tools/list</code>)</h3>
+        <p>The client requests the catalogue of available tools. The server replies with names, descriptions, and full JSON Schema parameter definitions.</p>
+        <div class="impl">
+          Our server exposes two tools:
+          <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+            <li><code>scrape_url</code> — scrapes a documentation page via Firecrawl</li>
+            <li><code>generate_wrapper</code> — runs the full self-healing LangGraph generation pipeline</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Step 3 — Execution (<code>tools/call</code>)</h3>
+        <p>The client calls a tool with a name and arguments object.</p>
+        <div class="impl"><strong>Error handling:</strong> If an exception occurs, the server sets <code>isError: true</code> inside the result content block rather than letting the exception propagate — keeping the process alive for subsequent requests.</div>
+      </div>
+
+      <div class="primary-source">
+        <div class="ps-label">📖 Primary Source — read this</div>
+        <a href="https://modelcontextprotocol.io/specification/2025-03-26" target="_blank" rel="noopener">MCP Specification — March 2025</a> — the canonical spec from Anthropic. Read the "Transports" and "Protocol Messages" sections to understand exactly what frames flow across stdin/stdout and why the stdout isolation is non-negotiable.
+      </div>
+
+      <section class="quiz">
+        <p class="quiz-heading">🧠 Retrieval Practice</p>
+        <p class="quiz-question">Why does the MCP server redirect all Python print output to stderr during startup?</p>
+        <div class="quiz-options">
+          <button class="opt" onclick="checkAnswer(this, false, 'q4')">
+            A) stderr is faster to write to, improving overall execution throughput.
+          </button>
+          <button class="opt" data-correct="true" onclick="checkAnswer(this, true, 'q4')">
+            B) To prevent casual logs or library warnings from polluting stdout, which the IDE client expects to contain only valid JSON-RPC protocol frames.
+          </button>
+          <button class="opt" onclick="checkAnswer(this, false, 'q4')">
+            C) The MCP specification forbids servers from using stderr streams entirely.
+          </button>
+        </div>
+        <div class="quiz-explanation" id="q4-exp">
+          Under stdin/stdout transport, stdout is the dedicated JSON-RPC pipe. Any non-JSON text — a print statement, a library warning — corrupts the frame stream and causes the IDE client parser to error. Redirecting stdout to stderr keeps the channel clean while still making logs visible.
+        </div>
+      </section>
+
+      <div class="ask-teacher">
+        <strong>Got a question?</strong> Ask your teacher agent — about how JSON-RPC 2.0 works, how to test an MCP server locally, or how notifications differ from requests in the protocol.
+      </div>
+    </main>
+
+    <nav class="lesson-nav">
+      <a href="0003-langgraph-and-self-healing-agent.html">← Lesson 3 — LangGraph Agent</a>
+      <a href="0005-premium-web-ui.html">Lesson 5 — Premium Web UI →</a>
+    </nav>
+
+    <footer>Smart API DevTool · Interactive Learning Curriculum · <a href="index.html">All Lessons</a></footer>
+  </div>
+  <script src="../assets/quiz.js"></script>
+</body>
+</html>

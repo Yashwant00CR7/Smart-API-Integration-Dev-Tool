@@ -42,11 +42,15 @@ The result is downloadable client code, tests, and a README you can drop directl
 
 The landing page demonstrates the LangGraph agent loop in a live interactive simulator. Watch the agent scrape, validate, synthesize, compile, self-heal, and deliver — all before running a single real generation.
 
+---
+
 ### Workspace Console
 
 ![Workspace Console](docs/WorkspaceConsole.jpg)
 
 The workspace console is where all the work happens. Configure your documentation source, define your use case constraints, choose a language and model provider, then execute the self-healing generator. Real-time terminal logs stream the agent's internal states as they pass through each LangGraph node.
+
+---
 
 ### Execution Tiers
 

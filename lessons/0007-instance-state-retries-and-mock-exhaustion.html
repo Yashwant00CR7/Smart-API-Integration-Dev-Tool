@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 7 — Instance-State Retries &amp; Mock-Exhaustion StopIteration</title>
+  <link rel="stylesheet" href="../assets/course.css" />
+</head>
+<body>
+  <div class="container">
+
+    <nav class="course-nav">
+      <a href="index.html">Course Index</a>
+      <span class="sep">›</span>
+      <a href="0006-hugging-face-spaces-deployment.html">Lesson 6</a>
+      <span class="sep">›</span>
+      <span>Lesson 7</span>
+    </nav>
+
+    <header>
+      <div class="lesson-meta">Lesson 7 · Resilience Engineering</div>
+      <h1>Instance-State Retries &amp; Mock-Exhaustion StopIteration</h1>
+      <p class="lesson-intro">
+        A subtle but production-breaking bug: static decorators that ignore runtime configuration, causing test mocks to exhaust and crash with a cryptic StopIteration. Here is what happens and how to fix it permanently.
+      </p>
+    </header>
+
+    <main>
+      <h2>The Bug: Static Decorators vs. Instance Variables</h2>
+      <p>
+        When an LLM generates a class with retry logic, it commonly reaches for a static method decorator:
+      </p>
+      <pre><code># ❌ COMMON LLM-GENERATED PATTERN — DO NOT USE
+class APIClient:
+    DEFAULT_MAX_RETRIES = 3
+
+    @retry(
+        stop=stop_after_attempt(DEFAULT_MAX_RETRIES + 1),  # Evaluated at class load
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        reraise=True
+    )
+    def _request(self, method, path, **kwargs):
+        ...</code></pre>
+
+      <p>
+        Python decorators are <strong>class-level constructs evaluated once at module import time</strong>. The <code>stop_after_attempt(DEFAULT_MAX_RETRIES + 1)</code> expression is computed when the class loads — not when the method is called. This is the root cause of the bug.
+      </p>
+
+      <div class="card">
+        <h3>State-Isolation Breach</h3>
+        <p>
+          If the caller instantiates the client with a custom retry count — <code>APIClient(max_retries=2)</code> — the static decorator ignores it entirely. The decorator stays bound to <code>DEFAULT_MAX_RETRIES</code>.
+        </p>
+        <div class="note"><strong>OOP principle broken:</strong> Instance configuration passed to <code>__init__</code> should govern instance behaviour. Static decorators break this by binding configuration at class load time.</div>
+      </div>
+
+      <h2>The Symptom: Mock Exhaustion &amp; StopIteration</h2>
+      <p>
+        The mismatch surfaces in unit tests as a cryptic <code>StopIteration</code>. Here is why:
+      </p>
+      <pre><code># Test written to expect exactly 3 attempts (max_retries=2)
+def test_retries_exceeded():
+    client = APIClient(max_retries=2)
+    with patch("requests.Session.request") as mock_req:
+        mock_req.side_effect = [
+            mock_response(429),   # attempt 1
+            mock_response(429),   # attempt 2
+            mock_response(429),   # attempt 3 — we expect this to raise
+        ]
+        with pytest.raises(RateLimitError):
+            client.list_items()</code></pre>
+
+      <div class="card">
+        <h3>Why StopIteration Fires</h3>
+        <p>
+          The test provides 3 mock responses, matching the expected 3 attempts. But the static decorator forces <code>DEFAULT_MAX_RETRIES + 1 = 4</code> attempts. Tenacity triggers a 4th network call.
+        </p>
+        <div class="note"><strong>What happens:</strong> <code>unittest.mock</code> calls <code>next()</code> on the depleted <code>side_effect</code> iterator. No elements remain. Python raises <code>StopIteration</code>. Pytest catches it as an unexpected error — not as the <code>RateLimitError</code> the test was asserting.</div>
+        <div class="impl"><strong>Diagnosis trap:</strong> The error message says <code>StopIteration</code>, not "retry count mismatch". Without knowing this pattern, it reads like a framework bug rather than a configuration isolation problem.</div>
+      </div>
+
+      <h2>The Fix: Dynamic Retrying</h2>
+      <p>
+        Remove the static decorator. Construct the tenacity controller dynamically <strong>inside the method at runtime</strong>, reading <code>self.max_retries</code> in the moment the call is made.
+      </p>
+      <pre><code># ✅ CORRECT PRODUCTION PATTERN
+def _request(self, method, path, **kwargs):
+    url = f"{self.base_url}{path}"
+
+    # Built fresh on every call — reads live instance state
+    retrier = Retrying(
+        stop=stop_after_attempt(self.max_retries + 1),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        reraise=True,
+        retry=retry_if_exception_type((RateLimitError, ServerError)),
+        before_sleep=before_sleep_log(logger, logging.INFO)
+    )
+
+    return retrier(
+        lambda: self._handle_response(
+            self.session.request(method, url, timeout=self.timeout, **kwargs)
+        )
+    )</code></pre>
+
+      <div class="card">
+        <h3>Why this works</h3>
+        <p><code>Retrying(...)</code> is called as a regular function inside <code>_request</code>. It runs after <code>__init__</code> has set <code>self.max_retries</code>. The stop condition reads the live instance value every time — not a class-level constant baked in at import.</p>
+        <div class="impl"><strong>Result:</strong> Mocks can now be sized exactly to match the configured retry count. <code>StopIteration</code> never fires. Tests are deterministic and trustworthy.</div>
+      </div>
+
+      <div class="primary-source">
+        <div class="ps-label">📖 Primary Source — read this</div>
+        <a href="https://tenacity.readthedocs.io/en/latest/#tenacity.Retrying" target="_blank" rel="noopener">Tenacity docs — Retrying class</a> — explains the difference between the <code>@retry</code> decorator and the <code>Retrying</code> context manager / callable, and when to use each. The callable form is the correct choice for instance-configurable retry logic.
+      </div>
+
+      <section class="quiz">
+        <p class="quiz-heading">🧠 Retrieval Practice</p>
+        <p class="quiz-question">Why does a static <code>@retry</code> decorator on an instance method cause mock tests to crash with StopIteration when <code>max_retries</code> is overridden at instantiation?</p>
+        <div class="quiz-options">
+          <button class="opt" onclick="checkAnswer(this, false, 'q7')">
+            A) Static decorators prevent mock patching libraries from intercepting network calls on the decorated method.
+          </button>
+          <button class="opt" data-correct="true" onclick="checkAnswer(this, true, 'q7')">
+            B) The decorator captures the retry stop count at class load time. If the instance sets a lower limit, the mock side_effect list is sized to that lower count — but tenacity still fires the higher load-time count, exhausting the iterator.
+          </button>
+          <button class="opt" onclick="checkAnswer(this, false, 'q7')">
+            C) pytest does not support assertion testing on classes decorated with tenacity handlers.
+          </button>
+        </div>
+        <div class="quiz-explanation" id="q7-exp">
+          Python evaluates class decorators once at import time. If the test configures a client with fewer retries than the static decorator expects, tenacity fires more calls than the mock has responses for. <code>unittest.mock</code> raises <code>StopIteration</code> on the exhausted iterator — appearing as a mysterious test framework error rather than a configuration mismatch.
+        </div>
+      </section>
+
+      <div class="ask-teacher">
+        <strong>Got a question?</strong> Ask your teacher agent — about when static decorators are appropriate vs the dynamic Retrying pattern, how to correctly size mock side_effect lists, or about other tenacity patterns like <code>retry_if_result</code>.
+      </div>
+    </main>
+
+    <nav class="lesson-nav">
+      <a href="0006-hugging-face-spaces-deployment.html">← Lesson 6 — HF Spaces Deployment</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <footer>Smart API DevTool · Interactive Learning Curriculum · <a href="index.html">All Lessons</a></footer>
+  </div>
+  <script src="../assets/quiz.js"></script>
+</body>
+</html>

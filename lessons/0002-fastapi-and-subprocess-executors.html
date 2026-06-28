@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 2 — FastAPI Skeletons &amp; Subprocess Test Runtimes</title>
+  <link rel="stylesheet" href="../assets/course.css" />
+</head>
+<body>
+  <div class="container">
+
+    <nav class="course-nav">
+      <a href="index.html">Course Index</a>
+      <span class="sep">›</span>
+      <a href="0001-problems-and-bottlenecks.html">Lesson 1</a>
+      <span class="sep">›</span>
+      <span>Lesson 2</span>
+    </nav>
+
+    <header>
+      <div class="lesson-meta">Lesson 2 · Backend &amp; Subprocess Sandboxing</div>
+      <h1>FastAPI Skeletons &amp; Subprocess Test Runtimes</h1>
+      <p class="lesson-intro">
+        For an agent to self-heal, it must be able to actually run the code it generates. This lesson covers how the backend is structured and how tests are executed safely in isolated sandboxes.
+      </p>
+    </header>
+
+    <main>
+      <p>
+        A self-healing code generator cannot rely on the LLM guessing whether its output is correct. The system needs to <strong>execute</strong> and <strong>test</strong> the code in real time. This lesson covers the three pillars that make that possible.
+      </p>
+
+      <h2>The 3 Pillars of Backend Validation</h2>
+
+      <div class="card">
+        <h3>1. FastAPI Skeletal Core</h3>
+        <p>FastAPI coordinates everything: serves the static dashboard, handles scraping requests, and spins up the LangGraph agent.</p>
+        <div class="note"><strong>Why FastAPI?</strong> It is lightweight, uses Pydantic for automatic request schema validation, and handles async loops natively — ideal for long-running generation and scraping requests.</div>
+        <div class="impl"><strong>In <code>src/app.py</code>:</strong> Static folders are mounted conditionally. The <code>POST /api/analyze</code> route triggers the scraper if a URL is given, or skips the network call entirely if raw text is pasted.</div>
+      </div>
+
+      <div class="card">
+        <h3>2. Concurrency-Safe UUID Sandboxing</h3>
+        <p>When compiling and running code, concurrent requests cannot share a single temp file. If two users trigger generation simultaneously, writing to the same <code>temp_client.py</code> would cause race conditions and corrupt compiler output.</p>
+        <div class="note"><strong>The danger:</strong> Parallel file writes cause race conditions, crashing compiles and mixing test logs between users.</div>
+        <div class="impl"><strong>The fix:</strong> The executor creates a unique subdirectory per run using a UUID — e.g. <code>temp/run_150754a0-677d-4d46-bf83-49218b1a8555/</code>. Code is written, executed, and the directory is deleted inside that one request's lifecycle.</div>
+      </div>
+
+      <div class="card">
+        <h3>3. Controlled Subprocess Execution</h3>
+        <p>Tests are executed by spawning an OS subprocess via Python's <code>subprocess.run</code>. This isolates the test runner from the main web server thread.</p>
+        <div class="note"><strong>The danger:</strong> An LLM might generate an infinite loop (<code>while True: pass</code>). Without a timeout, that subprocess hangs the server thread indefinitely.</div>
+        <div class="impl"><strong>The fix:</strong> All processes run with a strict <code>timeout=15</code> (30 for Go/Java). A <code>TimeoutExpired</code> exception is caught and returned as a failure log to the agent for repair.</div>
+      </div>
+
+      <h2>The Executor Workflow</h2>
+      <pre>
+1. Code + tests arrive at run_tests()
+   │
+   ▼
+2. Create unique UUID sandbox directory under temp/
+   │
+   ▼
+3. Write client.py and test_client.py inside the sandbox
+   │
+   ▼
+4. subprocess.run(["pytest", "test_client.py"], cwd=sandbox, timeout=15)
+   │
+   ▼
+5. Capture exit code (0 = pass, non-zero = fail) + stdout/stderr logs
+   │
+   ▼
+6. Delete UUID sandbox directory (cleanup)
+   │
+   ▼
+7. Return (success: bool, logs: str) to LangGraph agent</pre>
+
+      <div class="primary-source">
+        <div class="ps-label">📖 Primary Source — read this</div>
+        <a href="https://docs.python.org/3/library/subprocess.html" target="_blank" rel="noopener">Python docs — subprocess module</a> — the definitive reference for <code>subprocess.run</code>, <code>Popen</code>, timeout handling, and stdout/stderr capture. Essential reading before working with process execution.
+      </div>
+
+      <section class="quiz">
+        <p class="quiz-heading">🧠 Retrieval Practice</p>
+        <p class="quiz-question">Why is it critical to enforce a timeout when spawning compiler processes in a self-healing pipeline?</p>
+        <div class="quiz-options">
+          <button class="opt" onclick="checkAnswer(this, false, 'q2')">
+            A) It prevents the compiler from caching previous build states and forces a clean rebuild each time.
+          </button>
+          <button class="opt" data-correct="true" onclick="checkAnswer(this, true, 'q2')">
+            B) It ensures that code containing infinite loops, syntax stalls, or blocking network calls is forcefully killed before it hangs the backend server thread permanently.
+          </button>
+          <button class="opt" onclick="checkAnswer(this, false, 'q2')">
+            C) It helps the Python interpreter optimise bytecode translation for the target CPU.
+          </button>
+        </div>
+        <div class="quiz-explanation" id="q2-exp">
+          An LLM can occasionally produce logic with recursive infinite loops or long-hanging HTTP calls. Without a timeout, that subprocess blocks a thread forever and eventually crashes the server. The timeout lets us intercept it, capture the hang as an error log, and pass it back to the LLM for repair.
+        </div>
+      </section>
+
+      <div class="ask-teacher">
+        <strong>Got a question?</strong> Ask your teacher agent — about subprocess isolation, UUID sandboxing strategies, or how the executor timeout interacts with the self-healing retry loop.
+      </div>
+    </main>
+
+    <nav class="lesson-nav">
+      <a href="0001-problems-and-bottlenecks.html">← Lesson 1 — Bottlenecks</a>
+      <a href="0003-langgraph-and-self-healing-agent.html">Lesson 3 — LangGraph Agent →</a>
+    </nav>
+
+    <footer>Smart API DevTool · Interactive Learning Curriculum · <a href="index.html">All Lessons</a></footer>
+  </div>
+  <script src="../assets/quiz.js"></script>
+</body>
+</html>
